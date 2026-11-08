@@ -1,0 +1,26 @@
+# Environment & Secrets (Never commit API keys!)
+.env
+.env.txt
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Collected data & large files
+data/
+*.csv
+*.xlsx
+*.db
+*.sqlite
+*.sqlite3
+
+# OS metadata
+.DS_Store
+Thumbs.db
