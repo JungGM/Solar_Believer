@@ -16,6 +16,15 @@ class ExistingModelAdapter:
         raise ConfigurationRequired("No model artifact or feature schema exists in the baseline repository.")
 
 
+class LegacyForecastCollector:
+    def collect_issue(self, issued_at):
+        # Reuse KMAForecastCollector.fetch_forecast for this date/time and the
+        # selected PLANT grids after pagination, retry and response checks exist.
+        # The legacy province representative grids are not the target plant map.
+        # Keep each issue in a distinct source key; do not overwrite old issues.
+        raise ConfigurationRequired("KMA forecast API → DB mapping and delayed-publication retries are pending.")
+
+
 class MonthlyTrainer:
     def train(self, snapshot, cutoff, output_dir):
         raise ConfigurationRequired("Training code, data snapshot and validation policy are pending.")

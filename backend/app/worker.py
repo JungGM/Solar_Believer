@@ -24,6 +24,7 @@ def build_scheduler(settings):
     scheduler = BlockingScheduler(timezone=settings.scheduler_timezone)
     for job_type, expression in [
         ("collect", settings.collection_cron),
+        ("forecast", settings.forecast_cron),
         ("predict", settings.prediction_cron),
         ("retrain", settings.retraining_cron),
     ]:

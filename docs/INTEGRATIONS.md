@@ -1,10 +1,16 @@
 # 실제 API와 모델을 연결할 위치
 
+현재 확정 방향은 개별 발전소별 예측과 20MW 목표 VPP 구성이다. `API/kpx_collector.py`의
+시도별 발전량은 해당 모델의 실측 원천으로 사용하지 않는다. 새 발전소별 원천 후보와
+키 담당·수집 가능 상태는 [데이터 요구](DATA_REQUIREMENTS.md)를 따른다.
+
 ## 외부 API → DB
 
 1. `contracts.Collector.collect(start, end)`를 구현한다.
 2. `adapters/legacy.py`에서 필요한 `API.*Collector`만 지연 import해 재사용한다.
    서비스 시작 시 API 호출이나 CSV 자동 탐색을 하지 않는다.
+   기상은 발전소 위치의 예보 격자/관측소를 매핑하고, 같은 격자 요청은 공유한다.
+   기존 시도별 대표 지점 매핑을 개별 발전소 위치로 간주하지 않는다.
 3. `CollectedRecord`로 변환한다. 안정적인 원천 키에 지역/시장·대상시각·예보 발표시각·
    기상 category를 포함하고, 단위·집계 수준·결측·시간 구간을 검증한다.
 4. `store_records`로 트랜잭션 저장한다. 예보는 `issued_at` 필수이고 naive 시각을 거부한다.

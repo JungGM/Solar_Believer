@@ -6,18 +6,31 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from .adapters.demo import DemoCollector
-from .adapters.legacy import ExistingModelAdapter, LegacyCollector, MonthlyTrainer, UnconfiguredSettlementRule
+from .adapters.legacy import (
+    ExistingModelAdapter,
+    LegacyCollector,
+    LegacyForecastCollector,
+    MonthlyTrainer,
+    UnconfiguredSettlementRule,
+)
 from .config import get_settings
 from .contracts import ConfigurationRequired
 from .db import session_factory
+from .forecast_schedule import latest_forecast_issue
 from .models import JobRun, TrainingRun, utcnow
 from .services import approved_model, checked_artifact, cutoff_records, store_records
 
 logger = logging.getLogger(__name__)
-JOB_TYPES = ("collect", "predict", "settle", "retrain")
+JOB_TYPES = ("collect", "forecast", "predict", "settle", "retrain")
 
 
 def execute_job(session, job_type, settings, cutoff):
+    if job_type == "forecast":
+        if settings.pipeline_mode != "live":
+            raise ConfigurationRequired("Live weather forecast collection is not enabled.")
+        issued_at = latest_forecast_issue(cutoff, settings.scheduler_timezone)
+        rows = LegacyForecastCollector().collect_issue(issued_at)
+        return "completed", store_records(session, rows), "Weather forecast issue stored."
     if job_type == "collect":
         if settings.pipeline_mode == "disabled":
             raise ConfigurationRequired(

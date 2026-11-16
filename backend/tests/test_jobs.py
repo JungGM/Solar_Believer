@@ -24,7 +24,7 @@ def test_demo_ingestion_and_durable_job_key(factory):
         assert session.scalars(select(JobRun.row_count).order_by(JobRun.id)).all() == [3, 0]
 
 
-@pytest.mark.parametrize("job_type", ["collect", "predict", "settle", "retrain"])
+@pytest.mark.parametrize("job_type", ["collect", "forecast", "predict", "settle", "retrain"])
 def test_unconfigured_jobs_are_explicitly_skipped(factory, job_type):
     settings = Settings(_env_file=None)
     assert run_job(job_type, factory=factory, settings=settings) == "skipped"

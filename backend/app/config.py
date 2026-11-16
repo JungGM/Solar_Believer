@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     postgres_password: str = ""
     pipeline_mode: str = "disabled"
     collection_cron: str = "15 * * * *"
+    forecast_cron: str = "20 2,5,8,11,14,17,20,23 * * *"
     prediction_cron: str = "30 * * * *"
     retraining_cron: str = "0 3 1 * *"
     scheduler_timezone: str = "Asia/Seoul"

@@ -30,6 +30,7 @@ REPOSITORY_AUDIT → ARCHITECTURE → 이 문서 순서로 읽는다.
 | `backend/app/services.py` | 중복 방지 저장·cutoff·모델 승인/적용 | 공통 업무 로직 추가 |
 | `backend/app/jobs.py` | 작업 실행·상태·롤백·학습 이력 | 연동 결과의 DB 저장 연결 |
 | `backend/app/worker.py` | cron·월 1회 학습·예측 후 정산 호출 자리 | 스케줄 정책 변경 |
+| `backend/app/forecast_schedule.py` | 하루 8회 예보의 발표분 선택·날짜 경계 처리 | 예보 입수 버퍼 정책 변경 |
 | `backend/app/cli.py` | 수동 작업·승인·적용 | 운영자 명령 추가 |
 | `backend/alembic.ini` | migration 경로 | 보통 수정 불필요 |
 | `backend/migrations/env.py` | 환경변수에서 DB 연결·메타데이터 | migration 공통 설정 |
@@ -37,6 +38,7 @@ REPOSITORY_AUDIT → ARCHITECTURE → 이 문서 순서로 읽는다.
 | `backend/migrations/versions/0001_initial_schema.py` | 초기 DB 스키마 | 공유 후 새 revision으로 확장 |
 | `backend/tests/conftest.py` | 메모리 DB·격리 PostgreSQL schema fixture | 테스트 기반 변경 |
 | `backend/tests/test_jobs.py` | 중복·미설정·실패 롤백·cutoff·월별 일정 | 수집/작업 계약 변경 |
+| `backend/tests/test_forecast_schedule.py` | 8개 예약 시각·예보 발표분·UTC/KST 날짜 경계 | 예보 일정 변경 |
 | `backend/tests/test_registry.py` | 승인·해시·활성 전환·경로 검증 | 모델 생명주기 변경 |
 | `backend/tests/test_api.py` | 빈 목록·DB 조회·페이지 크기 | API 계약 변경 |
 | `frontend/package.json` | React/Vite·개발/빌드 명령 | UI 의존성 변경 |
@@ -54,6 +56,9 @@ REPOSITORY_AUDIT → ARCHITECTURE → 이 문서 순서로 읽는다.
 | `docs/REPOSITORY_AUDIT.md` | 기존 13개 파일 전수 조사 | 후속 조사 근거 추가 |
 | `docs/ARCHITECTURE.md` | 시스템·DB·작업·모델 설계 | 구조 결정 변경 |
 | `docs/INTEGRATIONS.md` | API·모델·학습·정산 후속 연결 절차 | 계약 구체화 |
+| `docs/DATA_REQUIREMENTS.md` | VPP·정산 목적의 원천 목록·갱신 주기·부족한 입력 | 데이터/수익 범위 결정 |
+| `docs/SYSTEM_OVERVIEW.md` | 현재 Docker·DB 구조도와 발전소별 20MW VPP 확장안 | 현재/예정 schema 변경 |
+| `docs/DEVELOPMENT_WITHOUT_DOCKER.md` | Docker 없는 팀원의 Python·React·PostgreSQL 개발 | 로컬 실행 절차 변경 |
 | `docs/COLLABORATION.md` | 2인 담당 제안·브랜치·DB 변경 | 협업 방식 변경 |
 | `docs/STATUS.md` | 완료/진행 중/예정 | 매 PR 갱신 |
 | `docs/ROADMAP.md` | 목표·단계·완료 조건 | 우선순위 변경 |
