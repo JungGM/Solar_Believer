@@ -18,7 +18,8 @@
 | README·설계·역할·로드맵 | 완료 | 2인 담당 제안 및 파일별 수정 위치 |
 | 로컬 검증 | 완료 | 22 tests, Ruff, 전체 기동·조회·DB 재시작·브라우저 확인; VALIDATION.md 참고 |
 | 작업 브랜치 | 완료 | `codex/initial-service-architecture` |
-| PR 공동 검토 | 진행 중 | PR 제출 후 팀원 리뷰·병합 대기 |
+| PR 제출 | 완료 | [PR #1](https://github.com/JungGM/Solar_Believer/pull/1) |
+| PR 공동 검토 | 진행 중 | 팀원 리뷰·병합 대기 |
 | GitHub Actions CI 활성화 | 예정 | 로컬 검증 완료; workflow 권한 부족으로 CI는 docs/ci/ 템플릿 제공 |
 | 실제 외부 API 자동 수집 | 예정 | 키 재발급, 응답·시간·단위 검증, DB 매핑 |
 | 실제 기존 모델 추론 | 예정 | 모델 파일/학습 코드 확보와 피처 스키마 검토 |
