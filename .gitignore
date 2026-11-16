@@ -24,3 +24,16 @@ data/
 # OS metadata
 .DS_Store
 Thumbs.db
+
+# Service build outputs and private artifacts
+node_modules/
+dist/
+.pytest_cache/
+.ruff_cache/
+.coverage
+artifacts/
+*.pkl
+*.joblib
+*.pt
+*.onnx
+*.log
