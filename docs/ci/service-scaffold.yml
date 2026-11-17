@@ -1,0 +1,29 @@
+name: service-scaffold
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python scripts/init_env.py
+      - run: docker compose config --quiet
+      - run: docker compose --profile test build
+      - run: docker compose run --rm tests python -m ruff check backend scripts
+      - run: docker compose run --rm tests
+      - run: docker compose up -d --wait --wait-timeout 180
+      - run: python scripts/smoke.py
+      - run: docker compose run --rm migrate alembic -c backend/alembic.ini check
+      - if: always()
+        run: docker compose ps -a && docker compose logs --no-color --tail 60 api worker migrate
+      - if: always()
+        run: docker compose down

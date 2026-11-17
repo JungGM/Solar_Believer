@@ -1,105 +1,126 @@
-# K-VPP Insight: 공공데이터 파이프라인 및 가상발전소(VPP) 데이터 인프라
+# Solar Believer
 
-> **전국 17개 시도 공공데이터(KPX 태양광 발전량, SMP, 기상청 ASOS 지상관측) 및 5만 개 태양광 발전소 허가 표준데이터 자동 수집·정제 파이프라인 (2022-01-01 ~ 현재, 시간 단위 Hourly)**
+태양광 발전량 예측 및 정산금 조회 웹서비스의 **2인 공동 개발용 초기 구조**입니다.
+기존 공공데이터 수집 코드를 보존하고 PostgreSQL·FastAPI·React·작업 스케줄러를 추가했습니다.
+현재 실제 API·모델·학습·정산 규칙 연동은 후속 단계이며, 예측/정산 숫자를 임의 생성하지 않습니다.
+목표는 **개별 발전소별 발전량 예측 → VPP당 목표 20MW로 구성 → SMP·정산식 적용**입니다.
+기존 시도별 발전량 수집기는 보존하며 개별 발전소 실측의 대용으로 사용하지 않습니다.
 
----
+## 먼저 읽기
 
-## 📌 1. 프로젝트 개요
+- [저장소 전체 조사](docs/REPOSITORY_AUDIT.md): 기존 13개 파일과 주의할 수집기 동작
+- [시스템 아키텍처](docs/ARCHITECTURE.md): 서비스·DB·스케줄·모델 생명주기
+- [전체 구조도·Docker/DB 구분](docs/SYSTEM_OVERVIEW.md) / [Docker 없는 팀원 개발](docs/DEVELOPMENT_WITHOUT_DOCKER.md)
+- [지도·VPP·기간·모델 대시보드](docs/DASHBOARD.md) / [지도 데이터 출처](docs/MAP_SOURCE.md)
+- [파일별 역할·수정 위치](docs/FILE_GUIDE.md) / [2인 협업](docs/COLLABORATION.md)
+- [목표·로드맵](docs/ROADMAP.md) / [완료·진행 중·예정](docs/STATUS.md)
+- [실제 연동 안내](docs/INTEGRATIONS.md) / [검증 기록](docs/VALIDATION.md)
+- [필요한 데이터·API와 수집 주기](docs/DATA_REQUIREMENTS.md)
+- [기존 README 원문](docs/LEGACY_README.md) / [기존 API 문서](API/README.md)
 
-본 프로젝트는 기상 변화에 따른 태양광 발전량의 변동성을 분석하고 가상발전소(VPP) 최적 운영 시뮬레이션을 수행하기 위해 구축된 **공공데이터 자동 수집 및 표준화 데이터 엔지니어링 파이프라인**입니다.
+조사 기준 `main@12e9e44`에는 데이터 수집 코드만 있으며 모델 파일·학습 코드는 없습니다.
+기존 설정의 인증키 기본값을 제거했습니다. 과거 Git에 들어간 키는 발급처에서 폐기·재발급하세요.
 
-* **전국 17개 시도 단위 시간별(Hourly) 시계열 구축**
-* **공공데이터포털 및 기상청 API허브 다중 데이터 통합**
-* **대용량 파일데이터(CSV) 및 Open API 자동 감지·Unpivot 로더 탑재**
-* **모든 데이터셋을 `data/raw/` 하위에 소스별 독립 CSV로 보존**하여 팀원들의 특성공학 및 머신러닝 모델 개발 시 유연하게 활용 가능
+## 빠른 실행
 
----
+필수: Git, Python(환경파일 생성용), Docker Desktop의 Linux containers와 Compose.
+DataGrip은 선택이며 로컬 Python/Node 패키지 설치 없이 Compose로 실행할 수 있습니다.
 
-## 📁 2. 디렉터리 구조
+```bash
+git clone https://github.com/JungGM/Solar_Believer.git
+cd Solar_Believer
+# PR 병합 전: git switch codex/initial-service-architecture
+python scripts/init_env.py
+docker version
+docker compose version
+docker compose config --quiet
+docker compose up -d --build --wait --wait-timeout 180
+```
+
+`init_env.py`는 `.env.example`에서 로컬 `.env`를 만들고 임의의 DB 암호를 생성합니다.
+API 키는 비어 있습니다. 기존 `.env`가 있으면 보존하므로 새 변수를 직접 대조하세요.
+복제한 `.env.example`을 사용할 때는 `POSTGRES_PASSWORD`를 반드시 채워야 합니다.
+Docker 엔진이 꺼져 있으면 `docker desktop start` 후 다시 확인합니다.
+
+- 대시보드: [http://localhost:3000](http://localhost:3000)
+- 가상 데이터로 지도·필터 확인: [데모 대시보드](http://localhost:3000/?demo=true)
+- FastAPI 문서: [http://localhost:8000/docs](http://localhost:8000/docs)
+- DB 준비 상태: [http://localhost:8000/health/ready](http://localhost:8000/health/ready)
+
+기본 `PIPELINE_MODE=disabled`: 수집·모델이 없어도 웹과 DB는 실행됩니다.
+worker는 매시 수집/예측, 하루 8회 예보, 매월 1일 03:00 KST 재학습을 예약하며 미연동 작업은 skipped로 기록합니다.
+예보는 `FORECAST_CRON=20 2,5,8,11,14,17,20,23 * * *`로 각 발표 20분 뒤 시도합니다.
+실제 예보 API→DB 매핑과 미제공 시 재시도는 아직 미구현입니다.
+빈 화면은 오류가 아니며 모델과 정산 기록은 연동 후 표시됩니다.
+대시보드는 한국 지도와 VPP 그룹·모델·일/월/연 필터, 예측/실측·SMP·오차 그래프,
+저장된 VPP 정산/손실 조회, 발전소 목록·데이터 확보율을 제공합니다.
+UI의 데모는 메모리에서만 생성하며 DB를 변경하지 않습니다. 정산 규칙이 없으면 금액은 미설정입니다.
+
+## 데이터 흐름 확인
+
+가상 수집값임을 명시하는 데모는 직접 선택해서 한 번 실행합니다.
+실제 외부 API 요청이나 모델 예측·정산 계산은 하지 않습니다.
+
+```bash
+docker compose exec -e PIPELINE_MODE=demo worker python -m backend.app.cli run collect
+docker compose exec worker python -m backend.app.cli run predict
+docker compose exec worker python -m backend.app.cli run settle
+docker compose exec worker python -m backend.app.cli run retrain
+```
+
+데모 수집은 관측·기상·시장 예시 3건을 DB에 저장합니다. 같은 시간대 재실행은 중복 저장하지 않습니다.
+웹에서 새로고침하면 조회할 수 있고, 데모 표시는 유지됩니다. 예측·정산·학습은 skipped이며
+학습 시도는 학습 이력에도 남습니다. 정산 규칙과 모델 승인 없이 실수치가 만들어지지 않습니다.
+주기 데모를 원하면 `.env`의 모드를 `demo`로 바꾸고 `docker compose up -d`로 적용합니다.
+
+## 구조
 
 ```text
-심설/
-├── API/                          # 공공데이터 수집 및 전처리 패키지
-│   ├── config.py                 # 전국 17개 시도 마스터 테이블, 관측소 지점, 격자좌표, 설정 로더
-│   ├── utils.py                  # RobustSession (429 Rate Limit 백오프 재시도), 날짜 청크
-│   ├── kma_collector.py          # 기상청 API허브 지상관측(ASOS) 시간자료 & 단기예보 수집기
-│   ├── kpx_collector.py          # KPX 태양광 발전량 & 계통한계가격(SMP) 로더 (풍력/제주 자동 분기)
-│   ├── plant_collector.py        # 전국 태양광 발전소 50,000건 전기사업허가 표준데이터 로더
-│   ├── api_collector.py          # 전체 통합 오케스트레이터 (KVPPOrchestrator)
-│   └── README.md                 # API 모듈 상세 명세서
-│
-├── data/raw/                     # 정제 및 표준화 완료된 원천 데이터셋 (Git 제외)
-│   ├── kma_obs_*.csv             # 기상청 17개 시도 지상관측 시간자료
-│   ├── kpx_solar_*.csv           # KPX 지역별 시간별 태양광 발전량 (2022~2025 4년 완결본)
-│   ├── kpx_smp_*.csv             # KPX 육지/제주 시간별 계통한계가격 (2022~2026 완결본)
-│   └── solar_plants_permit.csv   # 전국 태양광 발전소 50,000건 메타데이터
-│
-├── api.py                        # 파이프라인 루트 진입점 CLI
-├── requirements.txt              # 의존성 패키지 목록 (requests, pandas 등)
-├── .env.example                  # API 인증키 설정 템플릿
-├── .gitignore                    # 보안 키(.env) 및 대용량 데이터(data/) 버전관리 제외
-└── README.md                     # 본 문서
+API/                  기존 외부 데이터 수집기, 경로 보존
+api.py                기존 CSV 수집 CLI, 경로 보존
+requirements.txt      기존 수집기용 의존성
+backend/app/          API·ORM·작업·계약·연동 adapter
+backend/migrations/   버전 관리 DB migration
+backend/tests/        작업·승인·API 테스트
+frontend/             React + Vite, Nginx 프록시
+scripts/              환경 생성·실행 검증
+docs/                 조사·설계·협업·진행 문서
+.github/              PR 양식 (CI 템플릿은 docs/ci/)
+compose.yaml          전체 개발 환경
 ```
 
----
+## 검증과 일상 명령
 
-## 📡 3. 수집 및 구축된 4대 원천 데이터셋
-
-| # | 데이터 소스 | 데이터명 | 파일명 (`data/raw/`) | 구축 규모 |
-|---|------------|--------|---------------------|----------|
-| 1 | **기상청 API허브** | 지상관측(ASOS) 시간자료 | `kma_obs_20220101_20221231.csv`<br>`kma_obs_20230101_20231231.csv` | **약 300,000행** (17개 시도, 기온/습도/풍속/일사량/전운량) |
-| 2 | **전력거래소(KPX)** | 지역별 시간별 태양광 발전량 | `kpx_solar_20220101_20251231.csv` | **596,088행** (2022~2025년 4년치, 17개 시도) |
-| 3 | **전력거래소(KPX)** | 계통한계가격(SMP) | `kpx_smp_20220101_20261031.csv` | **84,696행** (2022~2026년 육지/제주 시간별) |
-| 4 | **공공데이터포털** | 전국 태양광 발전소 전기사업허가 | `solar_plants_permit.csv` | **50,000건** (전국 설비용량, 위경도, 17개 시도 코드 매핑) |
-
----
-
-## 🚀 4. 빠른 시작 (Quick Start)
-
-### 1단계: 패키지 설치
 ```bash
-pip install -r requirements.txt
+docker compose --profile test build tests
+docker compose run --rm tests python -m ruff check backend scripts
+docker compose run --rm tests
+python scripts/smoke.py
+docker compose run --rm migrate alembic -c backend/alembic.ini check
+docker compose ps -a
+docker compose logs --tail 100 api worker migrate
+docker compose down
 ```
 
-### 2단계: 인증키 설정 (`.env`)
-프로젝트 루트에 `.env` 파일을 만들고 키를 입력합니다 (Git에는 커밋되지 않습니다):
-```env
-DATA_GO_KR_API_KEY=발급받은_공공데이터포털_인증키
-KMA_APIHUB_KEY=발급받은_기상청_API허브_인증키
-```
+Compose 테스트는 SQLite와 실제 PostgreSQL의 격리 schema에서 실행합니다.
+최신 검증 시 54개 테스트가 통과했습니다. 자세한 근거와 미검증 범위는 [검증 기록](docs/VALIDATION.md)에 있습니다.
 
-### 3단계: 파이프라인 실행
-```bash
-# 기본 전체 실행 (기상청 + 태양광 발전량 + SMP + 발전소 데이터)
-python api.py --start 2022-01-01 --end 2023-12-31
+`down`은 컨테이너를 중지하고 볼륨을 보존합니다. `down -v`는 DB와 모델 볼륨을 지우므로
+기존 데이터를 유지할 때 사용하지 마세요. 암호 변경은 초기화된 DB의 암호를 자동 변경하지 않습니다.
+포트 충돌 시 `.env`의 POSTGRES_PORT/API_PORT/WEB_PORT를 바꾸고 실행합니다.
+`smoke.py`의 기본 확인 포트도 함께 조정해야 합니다.
 
-# 특정 소스만 실행 (예: SMP만 로컬 CSV에서 변환)
-python api.py --sources smp
+## DataGrip 및 로컬 개발
 
-# 태양광 발전량만 로컬 CSV에서 자동 감지하여 변환
-python api.py --sources solar
+PostgreSQL 연결: host `localhost`, port `.env`의 POSTGRES_PORT(기본 5432),
+database `solar_believer`, user `solar`, password는 로컬 `.env`의 값입니다.
+비밀번호·DB 데이터는 Git에 올리지 않습니다. 스키마 변경은 GUI 수작업 대신 Alembic으로 기록하세요.
 
-# 기상청 단기예보도 함께 수집 시
-python api.py --start 2023-01-01 --end 2023-01-03 --forecast
-```
+Python 개발은 Python 3.12 가상환경에서 `pip install -r backend/requirements-dev.txt`,
+DB 기동·migration 적용 후 `uvicorn backend.app.main:app --reload`로 실행합니다.
+UI 개발은 Node 24에서 `cd frontend`, `npm ci`, `npm run dev`로 실행하고
+Vite가 로컬 8000번 API로 프록시합니다. API 8000번이 이미 컨테이너에서 사용 중이면
+`docker compose stop api web` 후 로컬 API를 실행하세요. 로컬 UI만 개발하면 기존 컨테이너 API를 사용할 수 있습니다.
 
----
-
-## 👥 5. 팀원들을 위한 데이터 활용 가이드
-
-팀원들이 머신러닝(예측) 및 최적화(VPP 입찰) 모델을 개발할 때, `data/raw/`의 파일들을 읽어서 바로 사용하실 수 있습니다:
-
-```python
-import pandas as pd
-
-# 1. 4개년 태양광 발전량 로드
-df_solar = pd.read_csv("data/raw/kpx_solar_20220101_20251231.csv")
-
-# 2. 시간별 SMP(계통한계가격) 로드
-df_smp = pd.read_csv("data/raw/kpx_smp_20220101_20261031.csv")
-
-# 3. 기상청 ASOS 기상 데이터 로드
-df_weather = pd.read_csv("data/raw/kma_obs_20230101_20231231.csv")
-
-# 공통 키: ['timestamp', 'region_code'] 또는 ['date', 'hour']로 1:1 결합(Join) 가능
-```
+초기 구조는 인증 없는 로컬 개발 환경입니다. 공개 운영 배포·실 API 연결·모델 학습·정산 확정은
+[로드맵](docs/ROADMAP.md)의 후속 범위입니다.

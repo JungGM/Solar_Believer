@@ -16,7 +16,7 @@ try:
     from dotenv import load_dotenv
     for env_f in possible_env_files:
         if env_f.exists():
-            load_dotenv(dotenv_path=env_f, override=True)
+            load_dotenv(dotenv_path=env_f, override=False)
             loaded = True
             break
 except ImportError:
@@ -31,7 +31,7 @@ if not loaded:
                         line = line.strip()
                         if line and not line.startswith("#") and "=" in line:
                             k, v = line.split("=", 1)
-                            os.environ[k.strip()] = v.strip().strip("'\"")
+                            os.environ.setdefault(k.strip(), v.strip().strip("'\""))
                 break
             except Exception:
                 pass
@@ -40,8 +40,8 @@ if not loaded:
 @dataclass
 class APIConfig:
     # API Keys
-    DATA_GO_KR_API_KEY: str = os.getenv("DATA_GO_KR_API_KEY", "10b8c48d24d2040dbd08f80b9b147dff13c506294c3443e82e3e75c49733103c")
-    KMA_APIHUB_KEY: str = os.getenv("KMA_APIHUB_KEY", "0-EyJ4d1Q9ehMieHdfPXcw")
+    DATA_GO_KR_API_KEY: str = os.getenv("DATA_GO_KR_API_KEY", "")
+    KMA_APIHUB_KEY: str = os.getenv("KMA_APIHUB_KEY", "")
 
     # 1. 전력거래소(KPX) 공식 엔드포인트 (400 에러 해결: 정확한 서비스명 및 오퍼레이션명)
     # 한국전력거래소_지역별 시간별 태양광 발전량 정보 (공공데이터포털 #15103243)
