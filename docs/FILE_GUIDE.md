@@ -20,9 +20,10 @@ REPOSITORY_AUDIT → ARCHITECTURE → 이 문서 순서로 읽는다.
 | `backend/app/__init__.py` | 앱 패키지 식별 | 일반적으로 수정 불필요 |
 | `backend/app/config.py` | 타입 있는 환경 설정, DB URL | 설정 추가 |
 | `backend/app/db.py` | Engine·Session·ORM Base | DB 연결/트랜잭션 공통 정책 |
-| `backend/app/models.py` | 6개 업무 테이블·관계·제약 | DB 변경 시 새 migration 동반 |
+| `backend/app/models.py` | 10개 업무 테이블·관계·제약 | DB 변경 시 새 migration 동반 |
 | `backend/app/schemas.py` | API 응답 타입 | 클라이언트 계약 변경 |
 | `backend/app/main.py` | 상태·요약·6종 조회 API | 조회·필터 추가 |
+| `backend/app/dashboard.py` | 지도/그룹/기간/모델 조회·엄격한 집계·가상 데모 | 필터·집계 정책 변경 |
 | `backend/app/contracts.py` | 수집·추론·학습·정산 계약 | A/B 합의 후 인터페이스 변경 |
 | `backend/app/adapters/__init__.py` | 연동 패키지 | 일반적으로 수정 불필요 |
 | `backend/app/adapters/demo.py` | 명시적 가상 수집값 | 인프라 확인용 데이터 변경 |
@@ -36,11 +37,13 @@ REPOSITORY_AUDIT → ARCHITECTURE → 이 문서 순서로 읽는다.
 | `backend/migrations/env.py` | 환경변수에서 DB 연결·메타데이터 | migration 공통 설정 |
 | `backend/migrations/script.py.mako` | 새 revision 템플릿 | 팀 migration 양식 변경 |
 | `backend/migrations/versions/0001_initial_schema.py` | 초기 DB 스키마 | 공유 후 새 revision으로 확장 |
+| `backend/migrations/versions/0002_vpp_dashboard.py` | 발전소·VPP·구성원·VPP 정산 스키마 추가 | 공유 후 새 revision으로 확장 |
 | `backend/tests/conftest.py` | 메모리 DB·격리 PostgreSQL schema fixture | 테스트 기반 변경 |
 | `backend/tests/test_jobs.py` | 중복·미설정·실패 롤백·cutoff·월별 일정 | 수집/작업 계약 변경 |
 | `backend/tests/test_forecast_schedule.py` | 8개 예약 시각·예보 발표분·UTC/KST 날짜 경계 | 예보 일정 변경 |
 | `backend/tests/test_registry.py` | 승인·해시·활성 전환·경로 검증 | 모델 생명주기 변경 |
 | `backend/tests/test_api.py` | 빈 목록·DB 조회·페이지 크기 | API 계약 변경 |
+| `backend/tests/test_dashboard.py` | 그룹/모델·cutoff·기간 경계·결측·가격/정산 버전·데모 불변성 | 대시보드 집계 변경 |
 | `frontend/package.json` | React/Vite·개발/빌드 명령 | UI 의존성 변경 |
 | `frontend/package-lock.json` | 설치 재현용 전체 의존성 | npm으로 갱신 후 커밋 |
 | `frontend/Dockerfile` | Node 빌드→Nginx 이미지 | UI 배포 방식 변경 |
@@ -49,7 +52,12 @@ REPOSITORY_AUDIT → ARCHITECTURE → 이 문서 순서로 읽는다.
 | `frontend/vite.config.js` | 로컬 UI 개발 프록시 | 개발 서버 연결 변경 |
 | `frontend/index.html` | 한국어 문서·React root | 메타데이터 변경 |
 | `frontend/src/api.js` | 조회·HTTP 오류 처리 | 클라이언트 공통 연결 |
-| `frontend/src/main.jsx` | 6개 탭·요약·빈 상태·에러·KST 표시 | 화면/컬럼 추가 |
+| `frontend/src/main.jsx` | 앱 셸·통합 대시보드·기존 관리 탭 전환 | 전체 탐색 구조 변경 |
+| `frontend/src/Dashboard.jsx` | 그룹/모델/일·월·연 선택·요약·정산·확보율·URL 상태 | 대시보드 화면 변경 |
+| `frontend/src/components/KoreaMap.jsx` | 대한민국 벡터 지도·그룹색·발전소 마커·정보 | 지도 표시 변경 |
+| `frontend/src/components/EnergyCharts.jsx` | 발전량 비교·SMP·오차·금액 그래프 | 차트 표시 변경 |
+| `frontend/src/components/RecordsPanel.jsx` | 기존 6종 기록 조회 탭 | 관리 표·컬럼 변경 |
+| `frontend/src/data/korea.json` | 출처가 기록된 대한민국 지리 형상 | MAP_SOURCE.md와 함께 갱신 |
 | `frontend/src/styles.css` | 반응형 레이아웃·색·타이포 | 디자인 변경 |
 | `docs/ci/service-scaffold.yml` | CI 활성화용 템플릿: lint·단위·Compose·HTTP·migration | workflow 권한 있는 개발자가 활성화 |
 | `.github/pull_request_template.md` | 공동 검토 체크 항목 | 팀 리뷰 양식 |
@@ -58,6 +66,8 @@ REPOSITORY_AUDIT → ARCHITECTURE → 이 문서 순서로 읽는다.
 | `docs/INTEGRATIONS.md` | API·모델·학습·정산 후속 연결 절차 | 계약 구체화 |
 | `docs/DATA_REQUIREMENTS.md` | VPP·정산 목적의 원천 목록·갱신 주기·부족한 입력 | 데이터/수익 범위 결정 |
 | `docs/SYSTEM_OVERVIEW.md` | 현재 Docker·DB 구조도와 발전소별 20MW VPP 확장안 | 현재/예정 schema 변경 |
+| `docs/DASHBOARD.md` | 조회 API·시간/결측/오차·정산 집계 정책·데모 구분 | 대시보드 계약 변경 |
+| `docs/MAP_SOURCE.md` | 지도 데이터 URL·해시·라이선스·축척 | 지도 자산 변경 |
 | `docs/DEVELOPMENT_WITHOUT_DOCKER.md` | Docker 없는 팀원의 Python·React·PostgreSQL 개발 | 로컬 실행 절차 변경 |
 | `docs/COLLABORATION.md` | 2인 담당 제안·브랜치·DB 변경 | 협업 방식 변경 |
 | `docs/STATUS.md` | 완료/진행 중/예정 | 매 PR 갱신 |

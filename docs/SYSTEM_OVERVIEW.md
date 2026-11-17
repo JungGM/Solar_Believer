@@ -49,7 +49,7 @@ DataGrip은 컨테이너로 넣지 않은 선택 도구다. Docker 없이 개발
 ## 현재 DB 구분
 
 현재 **PostgreSQL 서버 1개 / 서비스 DB `solar_believer` 1개 / `public` schema**다.
-기능마다 DB를 따로 만들지 않고 **업무 테이블 6개**로 구분했다.
+기능마다 DB를 따로 만들지 않고 **업무 테이블 10개**로 구분했다.
 추가 `alembic_version`은 스키마 버전 관리용 내부 테이블이다.
 
 | 테이블 | 저장하는 것 | 구분 방법 |
@@ -60,12 +60,20 @@ DataGrip은 컨테이너로 넣지 않은 선택 도구다. Docker 없이 개발
 | model_versions | 모델 버전·파일 해시·지표·승인·활성 여부 | version unique, 승인 모델 최대 1개 활성 |
 | training_runs | 학습 시도·데이터 기준·스냅샷·지표 | status, cutoff_at, data_snapshot |
 | job_runs | 예약/수동 작업의 실행 결과 | job_key unique, job_type, status, row_count, 시작/종료 |
+| plants | 발전소 메타데이터 | 안정 ID, 위경도, 용량, 가격 구역, 발전량 원천 |
+| vpp_portfolios | VPP 그룹·구성 버전 | slug/version unique, 목표 용량 |
+| vpp_memberships | 발전소의 그룹 소속·적용 기간 | plant/portfolio FK, 시작·종료 |
+| vpp_settlements | 저장된 VPP 정산 결과 | 그룹·모델·시각·규칙 unique, 금액·손실·근거 |
 
 ```mermaid
 erDiagram
     training_runs o|--o{ model_versions : training_run_id
     model_versions ||--o{ predictions : model_version_id
     predictions ||--o{ settlements : prediction_id
+    plants ||--o{ vpp_memberships : plant_id
+    vpp_portfolios ||--o{ vpp_memberships : portfolio_id
+    vpp_portfolios ||--o{ vpp_settlements : portfolio_id
+    model_versions ||--o{ vpp_settlements : model_version_id
     observations {
         int id PK
         string source
@@ -92,7 +100,7 @@ observations와 job_runs는 다른 업무 테이블에 직접 FK가 없다.
 같은 발전소의 시각별 데이터는 여러 행으로 누적한다.
 예보는 대상 시각과 발표 시각을 나눠 저장해 같은 대상의 여러 발표분을 보존한다.
 
-## 발전소별 20MW VPP를 위해 추가할 구조
+## 발전소별 20MW VPP의 현재와 후속
 
 ```mermaid
 flowchart LR
@@ -104,19 +112,16 @@ flowchart LR
     s --> ui[웹 조회]
 ```
 
-이 흐름의 VPP 구성·집계·정산 실행은 **후속 구현**이다. 현재 테이블이 이미 발전소별
-VPP 구성원을 관리한다고 해석하면 안 된다. 다음 schema 확장안은 아래와 같다.
+현재 발전소·VPP·구성원·VPP 정산 테이블은 `0002` migration으로 추가했다.
+지도와 기간/모델 필터는 등록된 구성원의 예측·실측을 조회 시 집계하며 별도
+vpp_predictions 테이블에 저장하지 않는다. 정산금은 vpp_settlements에 이미 저장된 결과만 읽는다.
+실제 발전소 자료·VPP 자동 배치·실제 모델 추론·정산 엔진은 아직 연결하지 않았다.
 
-| 추가 예정 | 역할 |
-|---|---|
-| plants | 안정적인 발전소 ID, 동일 기준 설비용량(kW), 위치, 예보 격자, 가격 구역 |
-| vpp_portfolios | VPP ID, 목표 용량 20,000kW, 구성 정책·버전 |
-| vpp_memberships | 어떤 발전소가 어느 VPP에 속하는지, 적용 기간, 배분/중복 배치 제약 |
-| vpp_predictions | 구성 버전에 따른 VPP별 예측·실측 집계 |
-| settlements 연결 확장 | 발전소 예측과 VPP 집계 중 실제 정산 대상을 명확한 FK로 연결 |
+그룹·기간·모델 선택이 지도/그래프/요약에 함께 적용되며, 금전적 손실은 발전량 오차와
+구별한다. 자세한 조건은 [대시보드 계약](DASHBOARD.md)을 따른다.
 
 예측 모델은 발전소별 발전량을 출력하고 VPP 구성 알고리즘이 그 출력을 받아 배치한다.
 VPP 목표 용량은 순간 발전량(kWh)이 아닌 **설비용량(kW/MW)** 기준이다.
 20MW 초과 허용 여부, 남은 발전소 처리, 한 발전소의 분할 허용 여부는 별도 정책으로 정한다.
 시도별 KPX 집계 데이터를 개별 발전소 실측으로 나누어 사용하지 않는다.
-웹은 백엔드에 저장된 계산 결과를 조회하며, 정산 규칙과 VPP 구성 버전을 함께 표시하도록 확장한다.
+웹은 백엔드의 조회 집계와 저장된 정산 결과를 표시하며 규칙·모델·구성 버전을 구별한다.

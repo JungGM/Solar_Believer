@@ -47,6 +47,14 @@ DB 준비와 마이그레이션 성공을 분리하는 구성은 [Compose 공식
 | model_versions | 버전 unique, 아티팩트 상대 경로·SHA-256·피처 스키마·지표·승인자, 활성 모델 최대 1개 |
 | training_runs | 학습 기준 시각·데이터 스냅샷·지표·상태·메모 |
 | job_runs | 작업 키 unique, 종류·상태·시작/종료·저장 건수·메시지 |
+| plants | 발전소 ID, 이름, 설비용량, 위경도, 가격 구역, 발전량 원천 |
+| vpp_portfolios | VPP 이름·구성 버전·목표 용량 |
+| vpp_memberships | VPP·발전소 FK와 적용 시작/종료 |
+| vpp_settlements | VPP·모델·대상시각·규칙 버전별 정산금/손실·근거 |
+
+`0002` migration으로 4개를 추가해 현재 업무 테이블은 10개다. 지도와 필터 대시보드는
+[조회·집계 정책](DASHBOARD.md)에 따라 동작한다. 발전소/VPP 자동 구성·실제 정산 계산은 후속이며,
+현재는 등록된 구성원을 조회 시 집계하고 저장된 금액을 읽는다.
 
 원시 관측값은 JSON에 단위를 포함한 명확한 키를 사용한다. 예:
 `generation_kwh`, `temperature_c`, `smp_krw_kwh`. `scope_id`는 후속 연동에서

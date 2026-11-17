@@ -11,6 +11,7 @@
 - [저장소 전체 조사](docs/REPOSITORY_AUDIT.md): 기존 13개 파일과 주의할 수집기 동작
 - [시스템 아키텍처](docs/ARCHITECTURE.md): 서비스·DB·스케줄·모델 생명주기
 - [전체 구조도·Docker/DB 구분](docs/SYSTEM_OVERVIEW.md) / [Docker 없는 팀원 개발](docs/DEVELOPMENT_WITHOUT_DOCKER.md)
+- [지도·VPP·기간·모델 대시보드](docs/DASHBOARD.md) / [지도 데이터 출처](docs/MAP_SOURCE.md)
 - [파일별 역할·수정 위치](docs/FILE_GUIDE.md) / [2인 협업](docs/COLLABORATION.md)
 - [목표·로드맵](docs/ROADMAP.md) / [완료·진행 중·예정](docs/STATUS.md)
 - [실제 연동 안내](docs/INTEGRATIONS.md) / [검증 기록](docs/VALIDATION.md)
@@ -42,6 +43,7 @@ API 키는 비어 있습니다. 기존 `.env`가 있으면 보존하므로 새 �
 Docker 엔진이 꺼져 있으면 `docker desktop start` 후 다시 확인합니다.
 
 - 대시보드: [http://localhost:3000](http://localhost:3000)
+- 가상 데이터로 지도·필터 확인: [데모 대시보드](http://localhost:3000/?demo=true)
 - FastAPI 문서: [http://localhost:8000/docs](http://localhost:8000/docs)
 - DB 준비 상태: [http://localhost:8000/health/ready](http://localhost:8000/health/ready)
 
@@ -50,6 +52,9 @@ worker는 매시 수집/예측, 하루 8회 예보, 매월 1일 03:00 KST 재학
 예보는 `FORECAST_CRON=20 2,5,8,11,14,17,20,23 * * *`로 각 발표 20분 뒤 시도합니다.
 실제 예보 API→DB 매핑과 미제공 시 재시도는 아직 미구현입니다.
 빈 화면은 오류가 아니며 모델과 정산 기록은 연동 후 표시됩니다.
+대시보드는 한국 지도와 VPP 그룹·모델·일/월/연 필터, 예측/실측·SMP·오차 그래프,
+저장된 VPP 정산/손실 조회, 발전소 목록·데이터 확보율을 제공합니다.
+UI의 데모는 메모리에서만 생성하며 DB를 변경하지 않습니다. 정산 규칙이 없으면 금액은 미설정입니다.
 
 ## 데이터 흐름 확인
 
@@ -98,7 +103,7 @@ docker compose down
 ```
 
 Compose 테스트는 SQLite와 실제 PostgreSQL의 격리 schema에서 실행합니다.
-최신 검증 시 33개 테스트가 통과했습니다. 자세한 근거와 미검증 범위는 [검증 기록](docs/VALIDATION.md)에 있습니다.
+최신 검증 시 54개 테스트가 통과했습니다. 자세한 근거와 미검증 범위는 [검증 기록](docs/VALIDATION.md)에 있습니다.
 
 `down`은 컨테이너를 중지하고 볼륨을 보존합니다. `down -v`는 DB와 모델 볼륨을 지우므로
 기존 데이터를 유지할 때 사용하지 마세요. 암호 변경은 초기화된 DB의 암호를 자동 변경하지 않습니다.

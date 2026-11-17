@@ -9,6 +9,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Float,
     Index,
     Integer,
     Numeric,
@@ -113,3 +114,61 @@ class JobRun(Base):
     row_count: Mapped[int] = mapped_column(Integer, default=0)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Plant(Base):
+    __tablename__ = "plants"
+    __table_args__ = (
+        CheckConstraint("capacity_kw > 0"),
+        CheckConstraint("latitude IS NULL OR latitude BETWEEN -90 AND 90"),
+        CheckConstraint("longitude IS NULL OR longitude BETWEEN -180 AND 180"),
+        CheckConstraint("smp_zone IN ('land','jeju')"),
+    )
+    id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    name: Mapped[str] = mapped_column(String(150))
+    capacity_kw: Mapped[Decimal] = mapped_column(Numeric(16, 3))
+    latitude: Mapped[float | None] = mapped_column(Float)
+    longitude: Mapped[float | None] = mapped_column(Float)
+    smp_zone: Mapped[str] = mapped_column(String(10))
+    generation_source: Mapped[str] = mapped_column(String(80))
+    is_demo: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class VppPortfolio(Base):
+    __tablename__ = "vpp_portfolios"
+    __table_args__ = (UniqueConstraint("slug", "version"), CheckConstraint("target_capacity_kw > 0"))
+    id: Mapped[int] = mapped_column(primary_key=True)
+    slug: Mapped[str] = mapped_column(String(100))
+    name: Mapped[str] = mapped_column(String(150))
+    version: Mapped[str] = mapped_column(String(50))
+    target_capacity_kw: Mapped[Decimal] = mapped_column(Numeric(16, 3), default=20000)
+    is_demo: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class VppMembership(Base):
+    __tablename__ = "vpp_memberships"
+    __table_args__ = (
+        UniqueConstraint("portfolio_id", "plant_id", "valid_from"),
+        CheckConstraint("valid_to IS NULL OR valid_to > valid_from"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    portfolio_id: Mapped[int] = mapped_column(ForeignKey("vpp_portfolios.id"), index=True)
+    plant_id: Mapped[str] = mapped_column(ForeignKey("plants.id"), index=True)
+    valid_from: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    valid_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class VppSettlement(Base):
+    """Stored group-level results only; no settlement formula is invented here."""
+
+    __tablename__ = "vpp_settlements"
+    __table_args__ = (UniqueConstraint("portfolio_id", "model_version_id", "target_at", "rule_version"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    portfolio_id: Mapped[int] = mapped_column(ForeignKey("vpp_portfolios.id"), index=True)
+    model_version_id: Mapped[int] = mapped_column(ForeignKey("model_versions.id"))
+    target_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    rule_version: Mapped[str] = mapped_column(String(100))
+    amount_krw: Mapped[Decimal] = mapped_column(Numeric(20, 2))
+    loss_krw: Mapped[Decimal | None] = mapped_column(Numeric(20, 2))
+    is_simulation: Mapped[bool] = mapped_column(Boolean, default=True)
+    details: Mapped[dict] = mapped_column(JSON)

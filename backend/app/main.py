@@ -7,7 +7,8 @@ from sqlalchemy.orm import Session
 
 from .config import get_settings
 from .db import get_session
-from .models import JobRun, ModelVersion, Observation, Prediction, Settlement, TrainingRun
+from .dashboard import router as dashboard_router
+from .models import JobRun, ModelVersion, Observation, Plant, Prediction, Settlement, TrainingRun
 from .schemas import (
     JobRunRead,
     ModelVersionRead,
@@ -18,6 +19,7 @@ from .schemas import (
 )
 
 app = FastAPI(title="Solar Believer API", version="0.1.0")
+app.include_router(dashboard_router)
 DB = Annotated[Session, Depends(get_session)]
 Limit = Annotated[int, Query(ge=1, le=500)]
 Offset = Annotated[int, Query(ge=0)]
@@ -33,6 +35,7 @@ def ready(session: DB):
     try:
         session.execute(text("SELECT 1"))
         session.execute(select(JobRun.id).limit(1))
+        session.execute(select(Plant.id).limit(1))
     except SQLAlchemyError:
         raise HTTPException(503, "Database or schema unavailable") from None
     return {"status": "ready"}

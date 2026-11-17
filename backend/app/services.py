@@ -1,6 +1,7 @@
 """Small transactional services shared by worker jobs and explicit operator CLI."""
 
 import hashlib
+from datetime import timezone
 from pathlib import Path
 
 from sqlalchemy import select
@@ -20,9 +21,13 @@ def store_records(session, records):
                 raise ValueError("Collector timestamps must have a timezone")
         if record.kind == "weather_forecast" and record.issued_at is None:
             raise ValueError("Weather forecasts require issued_at")
+        values = vars(record).copy()
+        for field in ("observed_at", "available_at", "issued_at"):
+            if values[field] is not None:
+                values[field] = values[field].astimezone(timezone.utc)
         result = session.execute(
             insert(Observation)
-            .values(**vars(record))
+            .values(**values)
             .on_conflict_do_nothing(index_elements=["source", "record_key"])
             .returning(Observation.id)
         )
