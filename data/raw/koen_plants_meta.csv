@@ -1,0 +1,24 @@
+﻿plant_id,ippt,plant_name,facility_name,hogi,capacity_kw,latitude,longitude,region_code,region_name,smp_zone,asos_stn,nx,ny,vpp_group,generation_source
+KOEN_C005,C005,경상대태양광 #1,경상대태양광,1,1000.0,35.1542,128.0981,48,경남,land,155,80,75,VPP_SOUTH_20MW,koen_solar
+KOEN_K001,K001,고흥만 수상태양광 #1,고흥만 수상태양광,1,63000.0,34.6485,127.2483,46,전남,land,165,67,62,VPP_GOHEUNG_63MW,koen_solar
+KOEN_85G1,85G1,광양항세방태양광 #1,광양항세방태양광,1,3250.0,34.9082,127.6978,46,전남,land,165,73,70,VPP_SOUTH_20MW,koen_solar
+KOEN_85S5,85S5,구미태양광 #1,구미태양광,1,1033.3,36.1035,128.3842,47,경북,land,136,84,96,VPP_CENTRAL_20MW,koen_solar
+KOEN_85M1,85M1,두산엔진MG태양광 #1,두산엔진MG태양광,1,75.0,35.2054,128.6412,48,경남,land,155,90,77,VPP_SOUTH_20MW,koen_solar
+KOEN_85S1,85S1,삼천포태양광 #1,삼천포태양광,1,100.0,34.9056,128.1167,48,경남,land,155,81,69,VPP_SOUTH_20MW,koen_solar
+KOEN_85S2,85S2,삼천포태양광 #2,삼천포태양광,2,1100.0,34.906,128.1172,48,경남,land,155,81,69,VPP_SOUTH_20MW,koen_solar
+KOEN_85S3,85S3,삼천포태양광 #3,삼천포태양광,3,400.0,34.9064,128.1178,48,경남,land,155,81,69,VPP_SOUTH_20MW,koen_solar
+KOEN_85S4,85S4,삼천포태양광 #4,삼천포태양광,4,2650.0,34.9068,128.1184,48,경남,land,155,81,69,VPP_SOUTH_20MW,koen_solar
+KOEN_855A,855A,삼천포태양광#5 #1,삼천포태양광#5,1,4500.0,34.9072,128.119,48,경남,land,155,81,69,VPP_SOUTH_20MW,koen_solar
+KOEN_855B,855B,삼천포태양광#5 #2,삼천포태양광#5,2,6500.0,34.9076,128.1196,48,경남,land,155,81,69,VPP_SOUTH_20MW,koen_solar
+KOEN_85S6,85S6,삼천포태양광#6 #1,삼천포태양광#6,1,1050.0,34.9085,128.121,48,경남,land,155,81,69,VPP_SOUTH_20MW,koen_solar
+KOEN_997I,997I,여수태양광 #1,여수태양광,1,1800.0,34.839,127.6745,46,전남,land,165,73,68,VPP_CENTRAL_20MW,koen_solar
+KOEN_84S1,84S1,영동태양광 #1,영동태양광,1,1100.0,37.7125,129.0085,42,강원,land,101,94,129,VPP_CENTRAL_20MW,koen_solar
+KOEN_9973,9973,영흥태양광 #1,영흥태양광,1,1000.0,37.2408,126.4363,28,인천,land,112,51,120,VPP_CENTRAL_20MW,koen_solar
+KOEN_997J,997J,영흥태양광 #2,영흥태양광,2,1000.0,37.2415,126.4375,28,인천,land,112,51,120,VPP_CENTRAL_20MW,koen_solar
+KOEN_987A,987A,영흥태양광 #3 #1,영흥태양광 #3,1,3500.0,37.2435,126.4401,28,인천,land,112,51,120,VPP_CENTRAL_20MW,koen_solar
+KOEN_987B,987B,영흥태양광 #3 #2,영흥태양광 #3,2,1500.0,37.244,126.441,28,인천,land,112,51,120,VPP_CENTRAL_20MW,koen_solar
+KOEN_987C,987C,영흥태양광 #3 #3,영흥태양광 #3,3,1800.0,37.2445,126.442,28,인천,land,112,51,120,VPP_CENTRAL_20MW,koen_solar
+KOEN_9875,9875,영흥태양광#5 #1,영흥태양광#5,1,4500.0,37.246,126.445,28,인천,land,112,51,120,VPP_CENTRAL_20MW,koen_solar
+KOEN_9978,9978,예천태양광 #1,예천태양광,1,2100.0,36.5862,128.4528,47,경북,land,136,85,106,VPP_CENTRAL_20MW,koen_solar
+KOEN_C003,C003,탑선태양광 #1,탑선태양광,1,3000.0,34.5812,126.4895,46,전남,land,165,54,61,VPP_CENTRAL_20MW,koen_solar
+KOEN_C004,C004,탑선태양광 #3,탑선태양광,3,9000.0,34.5825,126.491,46,전남,land,165,54,61,VPP_SOUTH_20MW,koen_solar

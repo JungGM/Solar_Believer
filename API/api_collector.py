@@ -33,6 +33,7 @@ from .config import APIConfig
 from .utils import setup_logger
 from .kma_collector   import KMAObsCollector, KMAForecastCollector
 from .kpx_collector   import KPXSolarCollector, KPXSMPCollector
+from .koen_collector  import KOENSolarCollector
 from .plant_collector import SolarPlantCollector
 
 
@@ -136,7 +137,7 @@ class KVPPOrchestrator:
         # 소스 필터링
         raw_sources = [x.strip().lower() for x in sources.split(",") if x.strip()]
         if "all" in raw_sources or not raw_sources:
-            selected = {"kma", "solar", "smp", "plant"}
+            selected = {"kma", "solar", "koen", "smp", "plant"}
         else:
             selected = set(raw_sources)
 
@@ -223,7 +224,9 @@ class KVPPOrchestrator:
                     )
                     cand_solar = [
                         c for c in cand_solar
-                        if "data/raw" not in c.replace("\\", "/") and "허가정보" not in c
+                        if "data/raw" not in c.replace("\\", "/")
+                        and "허가정보" not in c
+                        and "남동발전" not in c
                     ]
                     if cand_solar:
                         target_solar = sorted(list(dict.fromkeys(cand_solar)))
@@ -258,6 +261,49 @@ class KVPPOrchestrator:
                 saved_files["kpx_solar"] = self._save(solar_df, solar_fname)
             else:
                 self.logger.warning("  ⚠️ 유효한 태양광 발전량 데이터가 수집되지 않았습니다.")
+
+        # ── 3-2. 한국남동발전(KOEN) 개별 발전기 시간대별 태양광 발전실적 ─────
+        if "koen" in selected:
+            self.logger.info("[개별발전기] 한국남동발전(KOEN) 23개 개별 발전기 태양광 발전실적 수집 및 변환 시작...")
+            koen_collector = KOENSolarCollector()
+            meta_df = koen_collector.get_plants_metadata()
+            if not meta_df.empty:
+                saved_files["koen_plants_meta"] = self._save(meta_df, "koen_plants_meta.csv")
+
+            import glob
+            existing_koen_files = sorted(glob.glob(os.path.join(self.raw_dir, "koen_solar_20220101_*.csv")))
+            if existing_koen_files:
+                latest_koen_path = existing_koen_files[-1]
+                self.logger.info(f"  → 기존 변환된 최신 개별발전기 데이터 로드: {latest_koen_path}")
+                koen_df = pd.read_csv(latest_koen_path, low_memory=False)
+                koen_df["timestamp"] = pd.to_datetime(koen_df["timestamp"], errors="coerce")
+            else:
+                koen_df = koen_collector.load_from_csv(min_date=s)
+
+            if not koen_df.empty and "date" in koen_df.columns:
+                max_koen_date = str(koen_df["date"].max())[:10]
+                if max_koen_date < e:
+                    from datetime import timedelta
+                    next_koen_start = (datetime.strptime(max_koen_date, "%Y-%m-%d") + timedelta(days=1)).strftime("%Y-%m-%d")
+                    self.logger.info(f"  → 개별발전기 CSV 이후 부족 구간 API 추가 수집: {next_koen_start} ~ {e}")
+                    api_koen_df = koen_collector.collect(start_date=next_koen_start, end_date=e)
+                    if not api_koen_df.empty:
+                        koen_df = pd.concat([koen_df, api_koen_df], ignore_index=True)
+                        koen_df["timestamp"] = pd.to_datetime(koen_df["timestamp"], errors="coerce")
+                        koen_df = (
+                            koen_df.drop_duplicates(subset=["timestamp", "plant_id"])
+                            .sort_values(["timestamp", "plant_id"])
+                            .reset_index(drop=True)
+                        )
+            elif koen_df.empty:
+                koen_df = koen_collector.collect(start_date=s, end_date=e)
+
+            if not koen_df.empty:
+                ks = str(koen_df["date"].min()).replace("-", "")[:8]
+                ke = str(koen_df["date"].max()).replace("-", "")[:8]
+                saved_files["koen_solar"] = self._save(koen_df, f"koen_solar_{ks}_{ke}.csv")
+            else:
+                self.logger.warning("  ⚠️ 유효한 남동발전 개별 발전기 데이터가 수집되지 않았습니다.")
 
         # ── 4. KPX SMP (로컬 CSV 전용 안전 처리) ─────────────────────────
         if "smp" in selected:
