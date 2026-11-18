@@ -148,12 +148,54 @@ class KVPPOrchestrator:
 
         # ── 1. 기상청 지상관측(ASOS) ──────────────────────────────────────
         if "kma" in selected:
-            self.logger.info("[1/4] 기상청 API허브 지상관측 수집 시작...")
-            obs_df = KMAObsCollector().collect(start_date=s, end_date=e)
-            obs_df = mark_interpolated(
-                obs_df, ["temp_c", "humidity_pct", "wind_speed_ms", "solar_radiation_mj"]
-            )
-            saved_files["kma_obs"] = self._save(obs_df, _fname("kma_obs", s, e))
+            self.logger.info("[1/4] 기상청 API허브 지상관측 수집 및 병합 시작...")
+            import glob
+            existing_kma_files = sorted(glob.glob(os.path.join(self.raw_dir, "kma_obs_*.csv")))
+            existing_kma_dfs = []
+            for kf in existing_kma_files:
+                try:
+                    kdf = pd.read_csv(kf, low_memory=False)
+                    if not kdf.empty and "timestamp" in kdf.columns:
+                        existing_kma_dfs.append(kdf)
+                except Exception:
+                    pass
+
+            if existing_kma_dfs:
+                base_kma = pd.concat(existing_kma_dfs, ignore_index=True)
+                base_kma["timestamp"] = pd.to_datetime(base_kma["timestamp"], errors="coerce")
+                base_kma = base_kma.dropna(subset=["timestamp"])
+                max_ts = base_kma["timestamp"].max()
+                max_date_str = max_ts.strftime("%Y-%m-%d")
+                if max_date_str < e:
+                    from datetime import timedelta
+                    next_start = (max_ts + timedelta(days=1)).strftime("%Y-%m-%d")
+                    self.logger.info(f"  → 기존 기상 데이터({max_date_str}까지) 확인됨. 추가 구간 수집: {next_start} ~ {e}")
+                    new_obs = KMAObsCollector().collect(start_date=next_start, end_date=e)
+                    if not new_obs.empty:
+                        new_obs = mark_interpolated(
+                            new_obs, ["temp_c", "humidity_pct", "wind_speed_ms", "solar_radiation_mj"]
+                        )
+                        obs_df = pd.concat([base_kma, new_obs], ignore_index=True)
+                    else:
+                        obs_df = base_kma
+                else:
+                    obs_df = base_kma
+                obs_df["timestamp"] = pd.to_datetime(obs_df["timestamp"], errors="coerce")
+                obs_df = (
+                    obs_df.drop_duplicates(subset=["timestamp", "region_code"])
+                    .sort_values(["timestamp", "region_code"])
+                    .reset_index(drop=True)
+                )
+            else:
+                obs_df = KMAObsCollector().collect(start_date=s, end_date=e)
+                obs_df = mark_interpolated(
+                    obs_df, ["temp_c", "humidity_pct", "wind_speed_ms", "solar_radiation_mj"]
+                )
+
+            if not obs_df.empty:
+                kma_s = pd.to_datetime(obs_df["timestamp"]).min().strftime("%Y%m%d")
+                kma_e = pd.to_datetime(obs_df["timestamp"]).max().strftime("%Y%m%d")
+                saved_files["kma_obs"] = self._save(obs_df, f"kma_obs_{kma_s}_{kma_e}.csv")
 
         # ── 2. 기상청 단기예보 (선택) ──────────────────────────────────────
         if collect_forecast and ("kma" in selected or "forecast" in selected):
@@ -165,28 +207,53 @@ class KVPPOrchestrator:
         if "solar" in selected:
             self.logger.info("[2/4] KPX 지역별 시간별 태양광 발전량 수집 및 로컬 CSV 변환 시작...")
             solar_collector = KPXSolarCollector()
-            target_solar = solar_csv_path
-            if not target_solar:
-                import glob
-                cand_solar = (
-                    glob.glob("*태양광*.csv") + glob.glob("*solar*.csv") + glob.glob("*SOLAR*.csv") + glob.glob("*풍력*.csv")
-                )
-                cand_solar = [
-                    c for c in cand_solar
-                    if "data/raw" not in c.replace("\\", "/") and "허가정보" not in c
-                ]
-                if cand_solar:
-                    target_solar = sorted(list(dict.fromkeys(cand_solar)))
+            import glob
+            existing_solar_files = sorted(glob.glob(os.path.join(self.raw_dir, "kpx_solar_20220101_*.csv")))
 
-            if target_solar:
-                self.logger.info(f"  → 🚀 로컬 태양광 CSV 파일 감지 및 변환 진행 ({len(target_solar) if isinstance(target_solar, list) else 1}개 파일)")
-                solar_df = solar_collector.load_from_csv(target_solar, min_date=s)
+            if existing_solar_files and not solar_csv_path:
+                latest_solar_path = existing_solar_files[-1]
+                self.logger.info(f"  → 기존 변환된 최신 태양광 데이터 로드: {latest_solar_path}")
+                solar_df = pd.read_csv(latest_solar_path, low_memory=False)
+                solar_df["timestamp"] = pd.to_datetime(solar_df["timestamp"], errors="coerce")
             else:
-                solar_df = solar_collector.collect(start_date=s, end_date=e)
+                target_solar = solar_csv_path
+                if not target_solar:
+                    cand_solar = (
+                        glob.glob("*태양광*.csv") + glob.glob("*solar*.csv") + glob.glob("*SOLAR*.csv") + glob.glob("*풍력*.csv")
+                    )
+                    cand_solar = [
+                        c for c in cand_solar
+                        if "data/raw" not in c.replace("\\", "/") and "허가정보" not in c
+                    ]
+                    if cand_solar:
+                        target_solar = sorted(list(dict.fromkeys(cand_solar)))
+
+                if target_solar:
+                    self.logger.info(f"  → 🚀 로컬 태양광 CSV 파일 감지 및 변환 진행 ({len(target_solar) if isinstance(target_solar, list) else 1}개 파일)")
+                    solar_df = solar_collector.load_from_csv(target_solar, min_date=s)
+                else:
+                    solar_df = solar_collector.collect(start_date=s, end_date=e)
+
+            # 부족한 최신 구간(예: 2026-01-01 ~ end_date) API 추가 수집 및 병합
+            if not solar_df.empty and "date" in solar_df.columns:
+                max_sol_date = str(solar_df["date"].max())[:10]
+                if max_sol_date < e:
+                    from datetime import timedelta
+                    next_sol_start = (datetime.strptime(max_sol_date, "%Y-%m-%d") + timedelta(days=1)).strftime("%Y-%m-%d")
+                    self.logger.info(f"  → 로컬 CSV 이후 부족 구간 API 추가 수집: {next_sol_start} ~ {e}")
+                    api_sol_df = solar_collector.collect(start_date=next_sol_start, end_date=e)
+                    if not api_sol_df.empty:
+                        solar_df = pd.concat([solar_df, api_sol_df], ignore_index=True)
+                        solar_df["timestamp"] = pd.to_datetime(solar_df["timestamp"], errors="coerce")
+                        solar_df = (
+                            solar_df.drop_duplicates(subset=["timestamp", "region_code"])
+                            .sort_values(["timestamp", "region_code"])
+                            .reset_index(drop=True)
+                        )
 
             if not solar_df.empty:
-                sol_s = solar_df["date"].min().replace("-", "")
-                sol_e = solar_df["date"].max().replace("-", "")
+                sol_s = str(solar_df["date"].min()).replace("-", "")[:8]
+                sol_e = str(solar_df["date"].max()).replace("-", "")[:8]
                 solar_fname = f"kpx_solar_{sol_s}_{sol_e}.csv"
                 saved_files["kpx_solar"] = self._save(solar_df, solar_fname)
             else:
