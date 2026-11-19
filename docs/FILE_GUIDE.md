@@ -1,7 +1,7 @@
 # 파일별 역할과 수정 위치
 
 `API/`는 기존 수집기다. `backend/`는 새 서비스다. 처음 작업할 때는 README →
-REPOSITORY_AUDIT → ARCHITECTURE → 이 문서 순서로 읽는다.
+TEAM_HANDOFF → ARCHITECTURE → 이 문서 순서로 읽는다. REPOSITORY_AUDIT은 최초 조사 기록이다.
 
 | 파일 | 역할 | 수정할 때 |
 |---|---|---|
@@ -64,6 +64,10 @@ REPOSITORY_AUDIT → ARCHITECTURE → 이 문서 순서로 읽는다.
 | `docs/REPOSITORY_AUDIT.md` | 기존 13개 파일 전수 조사 | 후속 조사 근거 추가 |
 | `docs/ARCHITECTURE.md` | 시스템·DB·작업·모델 설계 | 구조 결정 변경 |
 | `docs/INTEGRATIONS.md` | API·모델·학습·정산 후속 연결 절차 | 계약 구체화 |
+| `docs/TEAM_HANDOFF.md` | 2026-11-19 데이터 조사·200개 지속 수집 목표·작업 ID·코드 결함·실행 순서 | 팀원의 실제 호출·구현·검증 결과로 상태 갱신 |
+| `docs/SETTLEMENT_RULES.md` | 20MW 초과 조건·SMP 판매금액 추정·예측 인센티브·예외·검증 항목 | 규칙 버전·정산 엔진 구현 시 함께 갱신 |
+| `API/koen_collector.py` | 남동발전 개별 호기 시간별 실측·하드코딩 메타데이터 | API 응답·신규 ID·실제 용량·좌표 검증 |
+| `data/raw/` | main에 추가된 6개 원천 CSV | 원본 보존. DB 자동 적재가 아니며 수정 결과는 별도 버전으로 관리 |
 | `docs/DATA_REQUIREMENTS.md` | VPP·정산 목적의 원천 목록·갱신 주기·부족한 입력 | 데이터/수익 범위 결정 |
 | `docs/SYSTEM_OVERVIEW.md` | 현재 Docker·DB 구조도와 발전소별 20MW VPP 확장안 | 현재/예정 schema 변경 |
 | `docs/DASHBOARD.md` | 조회 API·시간/결측/오차·정산 집계 정책·데모 구분 | 대시보드 계약 변경 |
