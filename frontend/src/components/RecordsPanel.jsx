@@ -80,7 +80,7 @@ function format(value, key) {
     return new Date(value).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
   return labels[value] ?? String(value);
 }
-export default function RecordsPanel({ view }) {
+export default function RecordsPanel({ view, refreshRevision = 0 }) {
   const [state, setState] = useState({ loading: true, rows: [], error: "" });
   const [revision, setRevision] = useState(0);
   useEffect(() => {
@@ -93,7 +93,7 @@ export default function RecordsPanel({ view }) {
           setState({ loading: false, rows: [], error: err.message });
       });
     return () => controller.abort();
-  }, [view, revision]);
+  }, [view, revision, refreshRevision]);
   const selected = recordViews[view];
   return (
     <>

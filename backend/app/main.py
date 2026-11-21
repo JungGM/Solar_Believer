@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from .config import get_settings
 from .db import get_session
 from .dashboard import router as dashboard_router
+from .workspace import router as workspace_router
 from .models import JobRun, ModelVersion, Observation, Plant, Prediction, Settlement, TrainingRun
 from .schemas import (
     JobRunRead,
@@ -20,6 +21,7 @@ from .schemas import (
 
 app = FastAPI(title="Solar Believer API", version="0.1.0")
 app.include_router(dashboard_router)
+app.include_router(workspace_router)
 DB = Annotated[Session, Depends(get_session)]
 Limit = Annotated[int, Query(ge=1, le=500)]
 Offset = Annotated[int, Query(ge=0)]

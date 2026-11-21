@@ -73,6 +73,32 @@ services:
       timeout: 3s
       retries: 6
 
+  collector:
+    profiles: [collector]
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: runtime
+    env_file: .env
+    command: [python, api.py, --continuous]
+    volumes:
+      - ./data:/app/data
+      - ./.env:/app/.env:ro
+    restart: unless-stopped
+
+  kma-collector:
+    profiles: [collector]
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: runtime
+    env_file: .env
+    command: [python, api.py, --kma-hub, --forecast-only]
+    volumes:
+      - ./data:/app/data
+      - ./.env:/app/.env:ro
+    restart: unless-stopped
+
   tests:
     profiles: [test]
     build:

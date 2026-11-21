@@ -4,9 +4,11 @@ WORKDIR /app
 COPY backend/requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt \
     && useradd --create-home app \
-    && mkdir /artifacts && chown app:app /artifacts
+    && mkdir -p /artifacts /app/data && chown app:app /artifacts /app/data
 COPY backend /app/backend
 COPY API /app/API
+COPY scripts /app/scripts
+COPY api.py /app/api.py
 USER app
 CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
