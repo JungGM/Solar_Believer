@@ -140,3 +140,20 @@ def test_seed_resumes_and_only_adds_new_days(monkeypatch):
     collector.seed(date(2022, 2, 2))
     assert store.query('SELECT start_date,end_date FROM public.open_meteo_tasks ORDER BY start_date DESC LIMIT 1').fetchone() == (date(2022, 2, 2), date(2022, 2, 2))
     store.close()
+
+
+def test_weather_only_handoff_keeps_registered_coordinates(tmp_path, monkeypatch):
+    import scripts.collect_open_meteo as module
+
+    store = Store()
+    member = {'source': 'koen', 'resource_id': 'A:1', 'scope_id': 'KOEN_A',
+              'latitude': 35, 'longitude': 127, 'coordinate_source': 'registered metadata'}
+    from psycopg.types.json import Jsonb
+
+    store.query("INSERT INTO public.open_meteo_locations VALUES('saved',35,127,%s,now())", (Jsonb([member]),))
+    store.conn.commit()
+    monkeypatch.setattr(module, 'ROOT', tmp_path)
+    locations = module.known_locations(store)
+    assert len(locations) == 1 and locations[0]['members'] == [member]
+    assert locations[0]['latitude'] == 35 and locations[0]['longitude'] == 127
+    store.close()

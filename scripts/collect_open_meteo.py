@@ -51,7 +51,11 @@ def call_cost(start, end, variables=VARIABLES):
 
 def known_locations(store):
     """Only registered coordinates with provenance; never geocode/infer missing plants."""
-    members = []
+    # A weather-only handoff retains the exact registered members even if the
+    # receiving PC's generation registry has not been imported yet.
+    members = [member for (items,) in store.query(
+        "SELECT members FROM public.open_meteo_locations"
+    ).fetchall() for member in items]
     for source, resource, scope, metadata in store.query(
         "SELECT source,resource,scope_id,metadata FROM public.collector_resource_registry"
     ).fetchall():

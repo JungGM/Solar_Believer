@@ -4,6 +4,55 @@
 **지금은 학습용 과거 예보 수집이 최우선**이며 모델 학습은 시작하지 않는다.
 기존 PostgreSQL `solar_believer`에 직접 적재한다. SQLite 대체 저장소는 만들지 않는다.
 
+## 다른 컴퓨터에서 이어받기 — 현재 인계 상태
+
+**2026-11-22 23:51 KST, 사용자의 다른 PC 수집 지시에 따라 이 PC의 Open-Meteo 수집기를 중지했다.**
+DB는 보존했으며 응답 **339건**, 시간별 스냅샷 **244,080행**, 좌표 **23곳**이다.
+월별 작업 5,428개 중 339개는 일부 변수 확보, 1개는 오류 재시도, 5,088개는 미처리다.
+오래된 일사량 결측을 0으로 채우지 않았고 모델 학습도 시작하지 않았다.
+
+Git 브랜치: **`codex/open-meteo-collection`**. 다른 컴퓨터에서 해당 브랜치를 받는다.
+기존 발전량/SMP DB를 지우거나 전체 DB를 덮어쓸 필요가 없다.
+
+```powershell
+git fetch origin
+git switch codex/open-meteo-collection
+git pull --ff-only
+
+# 기존 .venv가 없을 때만 생성한다.
+py -3.12 -m venv .venv
+.venv\Scripts\python.exe -m pip install -r backend/requirements.txt
+.venv\Scripts\python.exe scripts/init_env.py
+docker compose up -d db
+docker compose run --rm --build migrate
+```
+
+현재 PC의 **`artifacts/open_meteo_handoff_20261122` 폴더**(또는 동명 ZIP)를 다른 PC의
+같은 경로에 복사한다. `open_meteo.dump` 약 10.2MB와 `manifest.json`이 한 쌍이다.
+이 파일에는 Open-Meteo 자료·원문·작업 큐·호출 장부·등록 좌표 연결만 들어 있다.
+다른 발전량/SMP 자료와 API 키는 포함하지 않으며 Git에도 원문 백업은 올리지 않는다.
+별도의 빈 시험 DB에 백업을 실제 복원하여 6개 테이블의 건수가 원본과 일치함을 확인했다.
+
+**처음 실행하기 전에 복원**한다. 복원 도구는 기존 Open-Meteo 테이블이 있으면 덮어쓰지 않고 중단한다.
+이미 다른 PC에서 Open-Meteo 수집 중이라면 그 DB를 그대로 사용하고 중복 복원하지 않는다.
+
+```powershell
+# SHA-256 확인 → Open-Meteo 테이블만 한 트랜잭션으로 복원 → 6개 테이블 건수 대조
+.venv\Scripts\python.exe -m scripts.open_meteo_handoff restore artifacts/open_meteo_handoff_20261122/manifest.json
+
+# 과거 예보 우선 자동수집 시작. 다른 수집기를 시작할 필요는 없다.
+docker compose --profile collector up -d --build open-meteo-collector
+
+# DB 실제 수집량 확인
+.venv\Scripts\python.exe -m scripts.open_meteo_status
+docker compose logs --tail 30 open-meteo-collector
+```
+
+복원된 위치 연결을 사용하므로 이 백업을 받을 때 별도의 좌표 CSV는 필요 없다.
+백업을 옮기지 않으면 이미 받은 339개 응답도 다시 요청해야 하며, 별도로 등록 좌표가 있는 DB가 필요하다.
+명령이 로컬 변경 때문에 Git 전환을 거부하면 변경을 보존하고 진행한다. 강제 체크아웃/초기화하지 않는다.
+DB 수집 상태와 NULL 확보율은 [중지 시점 실제 집계](reports/open_meteo_collection_20261122.json)에 기록했다.
+
 ## 실제 수집 범위
 
 - 목표 대상일: **2022-01-01부터 실행 당일까지**. 날짜가 바뀌면 추가 날짜를 이어받는다.
@@ -92,7 +141,8 @@ GFS의 2022년 24시간 전 일사량·구름량도 시험에서 NULL이었다. 
 
 ## 실행과 중지
 
-현재 PC에서는 Docker의 `open-meteo-collector`가 실행되며 `restart: unless-stopped`를 사용한다.
+자동수집은 Docker의 `open-meteo-collector`와 `restart: unless-stopped`를 사용한다.
+현재 PC는 다른 PC로 넘기기 위해 중지했으며, 위 인계 절차로 다른 PC에서 시작한다.
 동일 DB에 대해 PostgreSQL advisory lock을 걸어 PC/컨테이너 중복 수집을 막는다.
 공공 발전량/SMP 수집기를 이 작업 때문에 새로 시작하지 않는다.
 
@@ -124,7 +174,7 @@ API 데이터와 개인 좌표 연결 원문은 `data/` 및 PostgreSQL에 두고
 
 - `scripts/tests/test_open_meteo.py`: KST 경계·NULL/0 구분·잘린 응답 거부·윤년·가중 한도,
   PostgreSQL 재수신/개정 보존·실패 재시도·10분 대기·내일 대상일·실행별 중복 방지.
-- 과거 우선 실행·중복 seed·추가 날짜 이어받기·PostgreSQL 적재 회귀 검사를 포함한 13개 테스트 통과.
+- 과거 우선 실행·중복 seed·추가 날짜 이어받기·좌표 CSV 없는 인계·PostgreSQL 적재 회귀 검사 14개 통과.
   Ruff 및 Compose 설정 검사 통과.
 - 현재 수집의 실제 DB 집계는 [2026-11-22 확인 보고](reports/open_meteo_collection_20261122.json)를 본다.
 - [Previous Runs](https://open-meteo.com/en/docs/previous-runs-api),
