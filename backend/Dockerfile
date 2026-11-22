@@ -9,6 +9,7 @@ COPY backend /app/backend
 COPY API /app/API
 COPY scripts /app/scripts
 COPY api.py /app/api.py
+COPY collector_credentials.py /app/collector_credentials.py
 USER app
 CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 

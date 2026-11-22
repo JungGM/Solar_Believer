@@ -25,10 +25,10 @@ from pathlib import Path
 from urllib.parse import unquote
 
 import requests
-from dotenv import dotenv_values
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from collector_credentials import get_api_key
 from scripts.postgres_store import open_store, store_exists, persist_runtime_state
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -798,7 +798,7 @@ def main():
     if args.iwest_daily_limit < 11:
         parser.error("Daily limit must exceed the 10-call inspection reserve")
     LIMITS["iwest"] = args.iwest_daily_limit - 10
-    key = unquote(dotenv_values(ROOT / ".env").get("DATA_GO_KR_API_KEY") or "").strip()
+    key = unquote(get_api_key("DATA_GO_KR_API_KEY", ROOT / ".env")).strip()
     if not key:
         parser.error("DATA_GO_KR_API_KEY is missing from local .env")
     output = args.output or ROOT / "data" / f"api_history_{args.start:%Y%m%d}_{args.end:%Y%m%d}"

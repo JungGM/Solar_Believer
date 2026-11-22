@@ -34,7 +34,7 @@ py -3.12 -m venv .venv
 .venv\Scripts\python.exe scripts/init_env.py
 ```
 
-새 PC `.env`에 `DATA_GO_KR_API_KEY`, `KMA_APIHUB_KEY`를 설정한다.
+API 키는 `collector_credentials.py`에 기본값이 내장돼 있다. 새 PC에서는 수동 입력하지 않아도 자동으로 읽는다. `init_env.py`도 내장 키를 자동으로 `.env`에 설정한다. 환경변수나 `.env`에 다른 키를 넣으면 그 값을 우선한다.
 새 DB 비밀번호는 초기화 스크립트가 만든 값을 사용해도 된다. 백업 복원에 기존 비밀번호는 필요하지 않다.
 
 ```powershell
@@ -76,7 +76,7 @@ docker compose up -d db
 
 `postgres.dump.partNNN`과 `manifest.json`을 함께 옮긴다. 합쳐진 `postgres.dump`는 로컬 검증용이다.
 Git에는 각 40MiB의 백업 조각을 올린다. Docker 이미지에는 DB 백업을 포함하지 않는다.
-API 키와 DB 비밀번호는 `.env`에서 설정하며 백업 조각에 들어 있지 않다.
+API 키는 사용자 승인에 따라 공개 코드 `collector_credentials.py`에 포함한다. DB 비밀번호는 새 PC에서 자동 생성한다. DB 백업 조각 자체에는 API 키와 DB 비밀번호를 넣지 않았다.
 
 ## 데이터 해석
 

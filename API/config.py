@@ -6,6 +6,7 @@ K-VPP Insight Data Pipeline Configuration
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from collector_credentials import DATA_GO_KR_API_KEY as DEFAULT_DATA_KEY, KMA_APIHUB_KEY as DEFAULT_KMA_KEY
 
 # .env 및 .env.txt 자동 탐색 및 로드
 base_dir = Path(__file__).resolve().parent.parent
@@ -40,8 +41,8 @@ if not loaded:
 @dataclass
 class APIConfig:
     # API Keys
-    DATA_GO_KR_API_KEY: str = os.getenv("DATA_GO_KR_API_KEY", "")
-    KMA_APIHUB_KEY: str = os.getenv("KMA_APIHUB_KEY", "")
+    DATA_GO_KR_API_KEY: str = os.getenv("DATA_GO_KR_API_KEY", "") or DEFAULT_DATA_KEY
+    KMA_APIHUB_KEY: str = os.getenv("KMA_APIHUB_KEY", "") or DEFAULT_KMA_KEY
 
     # 1. 전력거래소(KPX) 공식 엔드포인트 (400 에러 해결: 정확한 서비스명 및 오퍼레이션명)
     # 한국전력거래소_지역별 시간별 태양광 발전량 정보 (공공데이터포털 #15103243)
