@@ -1,5 +1,7 @@
 # 팀원 작업 인계: 지속 수집·200개 발전기·VPP·정산
 
+> **2026-11-22 11:51 KST PostgreSQL 전환 갱신:** 기존 수집 자료와 CSV 7개를 PostgreSQL로 이전했고, 자동수집도 PostgreSQL에 직접 적재한다. 아래 SQLite·DB 미연결·이전 테스트 결과는 그 이전 체크포인트 기록이다. 현재 실행·복원 방법은 [PostgreSQL 인계](POSTGRES_HANDOFF.md), 실제 건수는 [적재 대조](reports/postgres_ingestion_20261122.json), 복원 검증은 [빈 DB 복원 결과](reports/postgres_restore_20261122.json)를 따른다. 수집기 테스트는 PostgreSQL에서 74개 통과했으며 모델·정산·격자 매핑 완료를 뜻하지 않는다.
+
 ## 2026-11-22 갱신 — 먼저 읽기
 
 현재 실행 경로·진행·검증 한계는 **[전체 진행 기록](PROGRESS.md)**과 [STATUS](STATUS.md)를 기준으로 한다.

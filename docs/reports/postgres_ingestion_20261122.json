@@ -1,0 +1,70 @@
+{
+  "checked_at_utc": "2026-11-22T02:51:02.006159+00:00",
+  "database": "PostgreSQL",
+  "sources": {
+    "koen": {
+      "raw_records": 39837,
+      "first_day": "2022-01-01",
+      "last_day": "2026-10-31",
+      "expected_service_rows": 956088,
+      "actual_service_rows": 956088,
+      "passed": true
+    },
+    "kospo": {
+      "raw_records": 25333,
+      "first_day": "2022-01-01",
+      "last_day": "2026-11-21",
+      "expected_service_rows": 607992,
+      "actual_service_rows": 607992,
+      "passed": true
+    },
+    "komipo": {
+      "raw_records": 15996,
+      "first_day": "2023-12-26",
+      "last_day": "2026-10-31",
+      "expected_service_rows": 383904,
+      "actual_service_rows": 383904,
+      "passed": true
+    },
+    "iwest": {
+      "raw_records": 14768,
+      "first_day": "2022-01-01",
+      "last_day": "2026-11-21",
+      "expected_service_rows": 354432,
+      "actual_service_rows": 354432,
+      "passed": true
+    },
+    "smp": {
+      "raw_records": 85800,
+      "first_day": "2022-01-01",
+      "last_day": "2026-11-23",
+      "expected_service_rows": 85800,
+      "actual_service_rows": 85800,
+      "passed": true
+    },
+    "forecast": {
+      "raw_records": 393601,
+      "first_day": "2026-11-19",
+      "last_day": "2026-11-26",
+      "expected_service_rows": 393601,
+      "actual_service_rows": 393601,
+      "passed": true
+    }
+  },
+  "passed": true,
+  "source_datasets": {
+    "api_history_20220101_20261031/supplementary_official_files/iwest_15095865_20260630.csv": 6575,
+    "raw/kma_obs_20220101_20261031.csv": 719781,
+    "raw/koen_plants_meta.csv": 23,
+    "raw/koen_solar_20220101_20261031.csv": 955344,
+    "raw/kpx_smp_20220101_20261031.csv": 84696,
+    "raw/kpx_solar_20220101_20260926.csv": 704520,
+    "raw/solar_plants_permit.csv": 50000
+  },
+  "source_dataset_total": 2520939,
+  "source_datasets_match": true,
+  "weather_forecast_grids": 5188,
+  "weather_grid_payloads_present": 5188,
+  "registered_source_resource_keys": 128,
+  "runtime_state_files": 29
+}

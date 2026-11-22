@@ -1,4 +1,4 @@
-param([double]$IntervalMinutes = 60, [switch]$GenerationOnly)
+param([double]$IntervalMinutes = 5, [switch]$GenerationOnly)
 $ErrorActionPreference = 'Stop'
 $taskRepo = Split-Path -Parent $PSScriptRoot
 $taskPython = Join-Path $taskRepo '.venv\Scripts\python.exe'
@@ -8,6 +8,8 @@ $taskStatusPath = Join-Path $taskData 'collector_status.json'
 if (-not (Test-Path -LiteralPath $taskPython)) {
     throw 'Create .venv and install requirements.txt first.'
 }
+& $taskPython -c "from scripts.postgres_store import connect_postgres; c=connect_postgres(); c.close(); print('PostgreSQL connection verified.')"
+if ($LASTEXITCODE -ne 0) { throw 'PostgreSQL is unavailable. Start the configured PostgreSQL database first.' }
 if (-not $GenerationOnly) { & (Join-Path $PSScriptRoot 'start_kma_collector.ps1') }
 if (Test-Path -LiteralPath $taskStatusPath) {
     $taskStatus = Get-Content -LiteralPath $taskStatusPath -Raw | ConvertFrom-Json
@@ -24,8 +26,7 @@ if (Test-Path -LiteralPath $taskStatusPath) {
     }
 }
 New-Item -ItemType Directory -Path $taskLogs -Force | Out-Null
-$taskStop = Join-Path $taskData 'STOP'
-if (Test-Path -LiteralPath $taskStop) { Remove-Item -LiteralPath $taskStop }
+# Old STOP files are ignored by the new process; retain them for OneDrive sync.
 $taskStamp = [datetime]::UtcNow.ToString('yyyyMMddTHHmmssfff')
 $taskStdout = Join-Path $taskLogs ($taskStamp + '.stdout.log')
 $taskStderr = Join-Path $taskLogs ($taskStamp + '.stderr.log')

@@ -18,10 +18,7 @@ if (Test-Path -LiteralPath $taskStatusPath) {
 if (-not (Test-Path -LiteralPath $taskPython)) { throw 'Create .venv and install requirements.txt first.' }
 $taskLogs = Join-Path $taskData 'logs'
 New-Item -ItemType Directory -Path $taskLogs -Force | Out-Null
-$taskStop = Join-Path $taskData 'STOP'
-if (Test-Path -LiteralPath $taskStop) { Remove-Item -LiteralPath $taskStop }
-$taskSharedStop = Join-Path $taskRepo 'data\continuous_collection\STOP'
-if (Test-Path -LiteralPath $taskSharedStop) { Remove-Item -LiteralPath $taskSharedStop }
+# Old STOP files are ignored by the new process; retain them for OneDrive sync.
 $taskStamp = [datetime]::UtcNow.ToString('yyyyMMddTHHmmssfff')
 $taskStdout = Join-Path $taskLogs ($taskStamp + '.stdout.log')
 $taskStderr = Join-Path $taskLogs ($taskStamp + '.stderr.log')

@@ -29,7 +29,7 @@ def test_smp_hour_padding_does_not_create_duplicate_market_intervals():
 def test_same_western_plant_name_with_different_capacity_is_retained(tmp_path):
     job = Download(tmp_path, "iwest", "secret", 0)
     row = dict(date="20220101", genNm="same-name", qcap="1", q01="100")
-    job.save_records([row, dict(row, qcap="2", q01="200")], "r", {"fetched_at_utc": "now"}, date(2022,1,1), date(2022,1,31))
+    job.save_records([row, dict(row, qcap="2", q01="200")], "r", {"fetched_at_utc": "2026-11-22T00:00:00+00:00"}, date(2022,1,1), date(2022,1,31))
     assert job.count() == 2
     job.db.close()
 
@@ -82,7 +82,7 @@ def test_export_retains_hour_24_negative_values_and_missingness(tmp_path):
 def test_revisions_and_requested_date_filter(tmp_path):
     job = Download(tmp_path, "koen", "secret", 0)
     base = dict(dgenYmd="2022-01-01", ippt="A", hogi="1", qhorGen01=1)
-    args = ("r", {"fetched_at_utc": "now"}, date(2022, 1, 1), date(2022, 1, 31))
+    args = ("r", {"fetched_at_utc": "2026-11-22T00:00:00+00:00"}, date(2022, 1, 1), date(2022, 1, 31))
     job.save_records([base, dict(base, dgenYmd="2022-02-01")], *args)
     job.save_records([dict(base, qhorGen01=2)], *args)
     assert job.count() == 1

@@ -80,6 +80,12 @@ services:
       dockerfile: backend/Dockerfile
       target: runtime
     env_file: .env
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     command: [python, api.py, --continuous]
     volumes:
       - ./data:/app/data
@@ -93,6 +99,12 @@ services:
       dockerfile: backend/Dockerfile
       target: runtime
     env_file: .env
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     command: [python, api.py, --kma-hub, --forecast-only]
     volumes:
       - ./data:/app/data

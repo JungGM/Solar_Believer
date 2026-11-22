@@ -8,13 +8,16 @@ import gzip
 import hashlib
 import json
 import math
-import sqlite3
 import sys
 from collections import Counter, defaultdict
 from datetime import date
 from pathlib import Path
 
-from collect_public_history import (
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from scripts.postgres_store import open_store
+from scripts.collect_public_history import (
     ENDPOINTS, KOMIPO_GUIDE_URL, KOMIPO_RESOURCES, ROOT, clean_day, dump,
     now, parse_response, record_identity,
 )
@@ -23,7 +26,7 @@ from collect_public_history import (
 def audit_source(root, source, start, end):
     directory = root / source
     report = json.loads((directory / "coverage.json").read_text(encoding="utf-8"))
-    conn = sqlite3.connect(directory / "checkpoint.sqlite")
+    conn = open_store(directory)
     expected = set()
     raw_rows, verified = 0, 0
     page_groups = defaultdict(lambda: {"returned_rows": 0, "advertised_total": None, "pages": []})
