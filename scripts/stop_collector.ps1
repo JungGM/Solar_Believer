@@ -6,4 +6,5 @@ New-Item -ItemType Directory -Path $taskData -Force | Out-Null
 $taskKmaData = Join-Path $taskRepo 'data\kma_hub'
 New-Item -ItemType Directory -Path $taskKmaData -Force | Out-Null
 [System.IO.File]::WriteAllText((Join-Path $taskKmaData 'STOP'), '')
+& (Join-Path $PSScriptRoot 'stop_open_meteo_collector.ps1')
 Write-Output 'Stop requested. The collector will exit after its current request.'

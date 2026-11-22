@@ -10,7 +10,7 @@ if (-not (Test-Path -LiteralPath $taskPython)) {
 }
 & $taskPython -c "from scripts.postgres_store import connect_postgres; c=connect_postgres(); c.close(); print('PostgreSQL connection verified.')"
 if ($LASTEXITCODE -ne 0) { throw 'PostgreSQL is unavailable. Start the configured PostgreSQL database first.' }
-if (-not $GenerationOnly) { & (Join-Path $PSScriptRoot 'start_kma_collector.ps1') }
+if (-not $GenerationOnly) { & (Join-Path $PSScriptRoot 'start_open_meteo_collector.ps1') }
 if (Test-Path -LiteralPath $taskStatusPath) {
     $taskStatus = Get-Content -LiteralPath $taskStatusPath -Raw | ConvertFrom-Json
     $taskExisting = Get-Process -Id $taskStatus.pid -ErrorAction SilentlyContinue

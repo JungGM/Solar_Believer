@@ -92,8 +92,27 @@ services:
       - ./.env:/app/.env:ro
     restart: unless-stopped
 
-  kma-collector:
+  open-meteo-collector:
     profiles: [collector]
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: runtime
+    env_file: .env
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    command: [python, -m, scripts.collect_open_meteo]
+    stop_grace_period: 90s
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+
+  kma-collector:
+    profiles: [kma]
     build:
       context: .
       dockerfile: backend/Dockerfile
