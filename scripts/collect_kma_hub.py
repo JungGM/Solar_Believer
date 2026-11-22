@@ -22,11 +22,11 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import requests
-from dotenv import dotenv_values
 
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from collector_credentials import get_api_key
 from scripts.collect_public_history import KST, ROOT, decode_body, dump, now
 from scripts.maintain_public_data import Singleton, stop_requested
 from scripts.postgres_store import open_store
@@ -374,7 +374,7 @@ def run(args, stop_event=None):
     stop_event = stop_event or threading.Event()
     args.output.mkdir(parents=True, exist_ok=True)
     key = (
-        os.environ.get("KMA_APIHUB_KEY") or dotenv_values(ROOT / ".env").get("KMA_APIHUB_KEY") or ""
+        get_api_key("KMA_APIHUB_KEY", ROOT / ".env")
     ).strip()
     if not key:
         raise ValueError("KMA_APIHUB_KEY is missing")

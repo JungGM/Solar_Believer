@@ -1,5 +1,7 @@
 # 프로젝트 전체 진행 기록
 
+> **2026-11-23 KST Docker 갱신:** 현재 작업 브랜치 `codex/open-meteo-collection`의 설치·DB 보존 업데이트·수집기 선택 실행은 [Docker 안내](DOCKER.md)를 따른다. 새 복제 환경의 웹 빌드를 막던 지도 파일 누락, 테스트 이미지의 환경파일 예제 누락, 실제 키가 테스트에 전달되던 구성을 수정했다. 실제 빌드·기동·HTTP·전체 테스트 결과는 [검증 기록](VALIDATION.md)의 최신 항목을 따른다.
+
 > **2026-11-22 11:51 KST PostgreSQL 전환 갱신:** 기존 수집 자료와 CSV 7개를 PostgreSQL로 이전했고, 자동수집도 PostgreSQL에 직접 적재한다. 아래 SQLite·DB 미연결·이전 테스트 결과는 그 이전 체크포인트 기록이다. 현재 실행·복원 방법은 [PostgreSQL 인계](POSTGRES_HANDOFF.md), 실제 건수는 [적재 대조](reports/postgres_ingestion_20261122.json), 복원 검증은 [빈 DB 복원 결과](reports/postgres_restore_20261122.json)를 따른다. 수집기 테스트는 PostgreSQL에서 74개 통과했으며 모델·정산·격자 매핑 완료를 뜻하지 않는다.
 
 갱신일: **2026-11-22 KST**. 저장소 `JungGM/Solar_Believer`, 작업 브랜치 `codex/team-data-handoff`, [PR #2](https://github.com/JungGM/Solar_Believer/pull/2).

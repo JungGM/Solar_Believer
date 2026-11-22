@@ -1,4 +1,40 @@
-# 1차 구조 검증 기록
+# 검증 기록
+
+## 2026-11-23 Docker 구성 갱신
+
+Windows Docker Desktop Engine `29.9.3`, Compose `v5.7.0`, Linux containers에서 확인했다.
+`codex/open-meteo-collection`의 `b052336`과 이번 Docker 관련 변경만 임시 폴더에 내보냈다.
+기존 작업 폴더의 미커밋 지도·화면·테스트 수정은 검증 사본에 포함하지 않았다.
+별도 Compose 프로젝트 `solar-believer-docker-verify`와 임의 localhost 포트·새 DB/모델 볼륨을 사용했다.
+기존 `solar-believer` DB·컨테이너·수집기의 실행 상태를 변경하지 않았다.
+
+| 검사 | 결과 | 근거 |
+|---|---|---|
+| 모든 프로필 Compose 설정 | 통과 | `collector`, `kma`, `test`를 포함해 `config --quiet` |
+| 새 환경파일 생성 | 통과 | DB 암호 자동 생성, 승인된 수집 키 기본값 설정, 키 출력 없음 |
+| 이미지 빌드 | 통과 | `api`, `migrate`, `worker`, `web`, `tests` |
+| 기본 서비스 기동 | 통과 | 새 DB → migration 정상 종료 → API·web healthy, worker running |
+| HTTP smoke | 통과 | API ready, 관리 조회 6종, Nginx 프록시, React HTML, 대시보드 기간/demo 조회 |
+| 스키마 일치 | 통과 | `alembic check`: No new upgrade operations detected |
+| Ruff | 통과 | 테스트 이미지에서 `ruff check backend scripts` |
+| 전체 pytest | **139 통과 / 12 실패** | SQLite·실제 PostgreSQL, 1 warning, 15.85초 |
+
+첫 새 복제 빌드에서 `frontend/src/data/korea.json`이 Git의 `data/` 제외 규칙 때문에 빠져
+Vite가 import를 해결하지 못했다. 지도 파일과 해당 경로의 Git 예외를 추가하고 재빌드했다.
+Python 테스트 이미지에는 `.env.example`을 추가했다. 테스트 서비스의 두 API 키 환경변수는
+빈 값으로 지정해 실제 `.env`의 키 때문에 미설정 adapter 검사가 달라지는 문제를 막았다.
+
+남은 12개 실패는 기존 `test_dashboard.py` 4종과 `test_workspace.py` 2종의
+SQLite/PostgreSQL 조합이다. 기존 공통 fixture는 KST 자정에 양수 발전량·예측을 넣고
+합계·오차를 기대하지만 현재 서비스의 야간 0 정책은 해당 값을 0으로 조회한다.
+이 Docker 변경은 서비스의 발전량 정책·조회 코드와 해당 fixture를 수정하지 않았다.
+따라서 이미지 빌드·기동 검증 통과를 전체 테스트 통과로 해석하지 않는다.
+
+이번에는 외부 수집기를 시작하거나 실제 API 수집·학습·정산을 실행하지 않았다.
+실제 자료의 완전성·모델 성능·장기 운영·다른 PC 복원은 이 검증의 범위 밖이다.
+설치와 DB 보존 업데이트 명령은 [Docker 안내](DOCKER.md)를 따른다.
+
+## 1차 구조 검증 기록
 
 검증일: 2026-11-17 (KST). Windows 로컬 Docker Desktop의 Linux containers에서 실행했다.
 기준 원본은 `main@12e9e44`, 변경 브랜치는 `codex/initial-service-architecture`다.

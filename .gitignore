@@ -15,6 +15,8 @@ env/
 
 # Collected data & large files
 data/
+!frontend/src/data/
+!frontend/src/data/korea.json
 *.csv
 *.xlsx
 *.db

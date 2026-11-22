@@ -1,5 +1,7 @@
 # Solar Believer
 
+**Docker 실행·업데이트:** [현재 서비스 구성, 다른 PC 설치, DB 보존 업데이트, 수집기 선택 실행](docs/DOCKER.md).
+
 **2026-11-22 PostgreSQL 전환·데이터 이전:** [실제 적재·백업·다른 PC 복원](docs/POSTGRES_HANDOFF.md). 수집기 검증 74개 PostgreSQL 통과, 원천/서비스 건수 대조 통과.
 
 **이전 전체 진행 기록:** [현재 구현·실제 수집 집계·실행 방법·남은 작업](docs/PROGRESS.md).
@@ -36,7 +38,8 @@
 
 최초 조사 기준 `main@12e9e44`에는 데이터 수집 코드만 있었습니다. `main@2a58fe2`에는 원천 CSV와 남동 수집 연결이 추가됐습니다.
 모델·학습·정산은 여전히 미설정입니다. PostgreSQL 적재 완료가 전기간 수집 완료나 단위·발전기별 품질 검증 완료를 뜻하지 않습니다.
-기존 설정의 인증키 기본값을 제거했습니다. 과거 Git에 들어간 키는 발급처에서 폐기·재발급하세요.
+수집용 API 키는 사용자 승인으로 `collector_credentials.py`의 기본값을 사용합니다.
+환경변수와 `.env`의 비어 있지 않은 값이 기본값보다 우선하며, DB 비밀번호는 Git에 올리지 않습니다.
 
 ## 빠른 실행
 
@@ -46,6 +49,7 @@ DataGrip은 선택이며 로컬 Python/Node 패키지 설치 없이 Compose로 �
 ```bash
 git clone https://github.com/JungGM/Solar_Believer.git
 cd Solar_Believer
+git switch codex/open-meteo-collection
 python scripts/init_env.py
 docker version
 docker compose version
@@ -54,7 +58,7 @@ docker compose up -d --build --wait --wait-timeout 180
 ```
 
 `init_env.py`는 `.env.example`에서 로컬 `.env`를 만들고 임의의 DB 암호를 생성합니다.
-API 키는 비어 있습니다. 기존 `.env`가 있으면 보존하므로 새 변수를 직접 대조하세요.
+승인된 수집용 API 키 기본값도 설정합니다. 기존 `.env`가 있으면 보존하므로 새 변수를 직접 대조하세요.
 복제한 `.env.example`을 사용할 때는 `POSTGRES_PASSWORD`를 반드시 채워야 합니다.
 Docker 엔진이 꺼져 있으면 `docker desktop start` 후 다시 확인합니다.
 
@@ -77,7 +81,7 @@ UI의 데모는 메모리에서만 생성하며 DB를 변경하지 않습니다.
 
 ### 실제 공공 API 파일 수집 및 주기 갱신
 
-승인된 공공데이터포털 키를 로컬 `.env`의 `DATA_GO_KR_API_KEY`에 설정한다.
+승인된 공공데이터포털 키 기본값을 자동 사용한다. 다른 키는 로컬 `.env`의 `DATA_GO_KR_API_KEY`에 설정한다.
 독립된 수집 프로세스가 기존 PostgreSQL 서비스 DB에 직접 저장한다. SQLite를 사용하지 않는다. `PIPELINE_MODE`는 기존 worker/모델 설정이며 새 수집기를 끄지 않는다.
 
 ```powershell
@@ -90,7 +94,8 @@ UI의 데모는 메모리에서만 생성하며 DB를 변경하지 않습니다.
 ```
 
 전경 실행은 `python api.py --continuous`, 1회 검증은 `--continuous --once`다.
-Docker 사용 시 `docker compose --profile collector up -d --build collector`로 실행한다.
+Docker 사용 시 발전량·SMP는 `docker compose --profile collector up -d --build collector`,
+Open-Meteo 기상은 `docker compose --profile collector up -d --build open-meteo-collector`로 각각 선택한다.
 로컬과 Docker 수집기를 동시에 실행하지 않는다. Windows 실행은 PC와 프로세스가 실행 중일 때 동작하며
 재부팅 후에는 시작 스크립트를 다시 실행한다. 중복 실행은 파일 잠금으로 방지한다.
 
@@ -98,9 +103,9 @@ Docker 사용 시 `docker compose --profile collector up -d --build collector`�
 - 예보는 현재 설정된 지역 대표 17개 격자로, 최신 발표분과 API가 제공하는 최근 3개 날짜의 누락 발표분을 누적한다.
   발전소별 정확한 격자 매핑이 완료되었다는 의미는 아니다. 2022~2026.10의 과거 예보는 이 API로 받을 수 없다.
 - 최신 조회에 필요한 호출 횟수를 남긴 뒤 아직 요청하지 않은 과거 페이지와 최근 기간을 순서대로 받는다.
-  하루 한도에 도달하면 KST 날짜가 바뀐 다음 주기에 재개한다. 공백 복구와 오류 재시도는 하지 않는다.
-- API 오류는 기록하고 다음 페이지·월·발전기로 넘어간다. 전체 페이지 수를 알 수 없는 첫 페이지 오류는 그 요청 범위를 건너뛴다.
-  과거에 실패한 요청도 다시 호출하지 않으며, 빈 자료는 그대로 누락으로 남긴다. 최신 자료의 정기 조회는 매시간 계속한다.
+  하루 한도에 도달하면 KST 날짜가 바뀐 다음 주기에 재개한다.
+- 지속 수집기는 공백·NULL 시간값·오류 요청을 호출 예산과 재시도 대기시간에 맞춰 다시 확인한다.
+  원천이 계속 빈 응답이나 오류를 반환하면 미확보로 남는다. 재시도가 전기간 확보를 보장하지 않는다.
 - 발전기 수 제한이나 200개에서의 중단은 없다. 남동·남부·서부는 모든 응답 페이지를 저장하고,
   중부는 공식 코드표를 자동 갱신하고 관측된 새 코드를 합쳐 전체 공개 태양광 호기를 조회한다. ESS는 발전기로 세지 않는다.
 - 빈 응답은 0 발전량으로 채우지 않는다. 같은 값의 최초 입수시각을 유지하며, 수정 값과 이전 버전을 함께 보관한다.
@@ -172,7 +177,7 @@ Compose 테스트는 SQLite와 실제 PostgreSQL의 격리 schema에서 실행�
 `down`은 컨테이너를 중지하고 볼륨을 보존합니다. `down -v`는 DB와 모델 볼륨을 지우므로
 기존 데이터를 유지할 때 사용하지 마세요. 암호 변경은 초기화된 DB의 암호를 자동 변경하지 않습니다.
 포트 충돌 시 `.env`의 POSTGRES_PORT/API_PORT/WEB_PORT를 바꾸고 실행합니다.
-`smoke.py`의 기본 확인 포트도 함께 조정해야 합니다.
+`smoke.py --api-url http://localhost:8001 --web-url http://localhost:3001`처럼 확인 주소를 지정할 수 있습니다.
 
 ## DataGrip 및 로컬 개발
 

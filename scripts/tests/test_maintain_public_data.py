@@ -219,7 +219,7 @@ def test_scheduler_runs_next_cycle_and_obeys_stop_file(tmp_path, monkeypatch):
     monkeypatch.setattr(maintenance, "datetime", Clock)
     monkeypatch.setattr(maintenance, "now", lambda: clock[0].isoformat())
     monkeypatch.setattr(maintenance, "UsageLedger", Ledger)
-    monkeypatch.setattr(maintenance, "dotenv_values", lambda p: {"DATA_GO_KR_API_KEY": "test-key"})
+    monkeypatch.setattr(maintenance, "get_api_key", lambda *a, **k: "test-key")
     monkeypatch.setattr(maintenance, "all_komipo_resources", lambda *a, **k: [])
     monkeypatch.setattr(maintenance, "run_cycle", cycle)
     monkeypatch.setattr(maintenance.time, "sleep", sleep)

@@ -17,11 +17,11 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import unquote
 
-from dotenv import dotenv_values
 
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from collector_credentials import get_api_key
 from scripts.collect_public_history import (
     APIError,
     Download,
@@ -630,7 +630,7 @@ def main():
     args.ledger = ROOT / "data/public_api_usage"
     args.force_first_poll = True
     args.komipo_resources = all_komipo_resources(args.history_output, args.output / "live")
-    key = unquote(dotenv_values(ROOT / ".env").get("DATA_GO_KR_API_KEY") or "").strip()
+    key = unquote(get_api_key("DATA_GO_KR_API_KEY", ROOT / ".env")).strip()
     if not key:
         parser.error("DATA_GO_KR_API_KEY is missing")
     LIMITS["iwest"] = args.iwest_daily_limit - 10
