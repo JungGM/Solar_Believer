@@ -22,6 +22,6 @@ New-Item -ItemType Directory -Path $taskLogs -Force | Out-Null
 $taskStamp = [datetime]::UtcNow.ToString('yyyyMMddTHHmmssfff')
 $taskStdout = Join-Path $taskLogs ($taskStamp + '.stdout.log')
 $taskStderr = Join-Path $taskLogs ($taskStamp + '.stderr.log')
-$taskProcess = Start-Process -FilePath $taskPython -ArgumentList @('-u', 'api.py', '--kma-hub', '--forecast-only') -WorkingDirectory $taskRepo -WindowStyle Hidden -RedirectStandardOutput $taskStdout -RedirectStandardError $taskStderr -PassThru
+$taskProcess = Start-Process -FilePath $taskPython -ArgumentList @('-u', 'api.py', '--kma-hub', '--forecast-only', '--history-first', '--start', '2026-06-01') -WorkingDirectory $taskRepo -WindowStyle Hidden -RedirectStandardOutput $taskStdout -RedirectStandardError $taskStderr -PassThru
 @{pid=$taskProcess.Id; started_at_utc=[datetime]::UtcNow.ToString('o'); stdout=$taskStdout; stderr=$taskStderr} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $taskData 'launcher.json') -Encoding UTF8
 Write-Output ('Started KMA Hub collector process. PID=' + $taskProcess.Id)

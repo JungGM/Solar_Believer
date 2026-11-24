@@ -2,6 +2,20 @@
 
 # 프로젝트 전체 진행 기록
 
+## 2026-11-25 Git 동기화 체크포인트
+
+- 기상청 과거 예보 우선 수집, NOAA GFS 수집기·전용 PostgreSQL 런처, 웹 터널 시작·중지 스크립트 및 관련 문서를 함께 버전 관리한다.
+- 작업 운영 지침: 사용자의 재요청을 기다리지 않고 작업 단위마다 변경을 커밋하고 원격 브랜치에 푸시한 뒤 동기화 상태를 확인한다.
+- 변경 Python 파일 Ruff와 `git diff --check`는 통과했다. 이번 테스트 실행은 로컬 PostgreSQL 연결 불가로 완료하지 못했으며, 이전 날짜의 테스트 통과 기록과 구분한다.
+
+2026-11-22 운영 설정: **학습용 과거 예보부터 수집**한다.
+`--forecast-only --history-first --start 2026-06-01`로 2026-06-01부터
+날짜순으로 과거 구간을 먼저 확보하고 최신 날짜까지 이어간다.
+날짜가 바뀌면 목표 범위도 계속 확장하며, 처리할 과거 요청을 최신 발표보다 먼저 선택한다.
+기존 08시 발표·다음 날 06~21시·14변수와 원본·기존 큐를 보존한다.
+기상청 회귀 테스트 11개, 변경 Python 파일 Ruff, `git diff --check` 통과.
+아래 2022년 역사 수집 수치와 최신 발표 우선 설명은 이전 기록이다.
+
 > **2026-11-22 11:51 KST PostgreSQL 전환 갱신:** 기존 수집 자료와 CSV 7개를 PostgreSQL로 이전했고, 자동수집도 PostgreSQL에 직접 적재한다. 아래 SQLite·DB 미연결·이전 테스트 결과는 그 이전 체크포인트 기록이다. 현재 실행·복원 방법은 [PostgreSQL 인계](POSTGRES_HANDOFF.md), 실제 건수는 [적재 대조](reports/postgres_ingestion_20261122.json), 복원 검증은 [빈 DB 복원 결과](reports/postgres_restore_20261122.json)를 따른다. 수집기 테스트는 PostgreSQL에서 74개 통과했으며 모델·정산·격자 매핑 완료를 뜻하지 않는다.
 
 갱신일: **2026-11-22 KST**. 저장소 `JungGM/Solar_Believer`, 작업 브랜치 `codex/team-data-handoff`, [PR #2](https://github.com/JungGM/Solar_Believer/pull/2).

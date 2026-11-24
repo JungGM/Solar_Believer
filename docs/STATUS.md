@@ -2,6 +2,14 @@
 
 # 현재 진행 상황
 
+2026-11-22 운영 설정: **학습용 과거 예보부터 수집**한다.
+`--forecast-only --history-first --start 2026-06-01`로 2026-06-01부터
+날짜순으로 과거 구간을 먼저 확보하고 최신 날짜까지 이어간다.
+날짜가 바뀌면 목표 범위도 계속 확장하며, 처리할 과거 요청을 최신 발표보다 먼저 선택한다.
+기존 08시 발표·다음 날 06~21시·14변수와 원본·기존 큐를 보존한다.
+기상청 회귀 테스트 11개, 변경 Python 파일 Ruff, `git diff --check` 통과.
+아래 2022년 역사 수집 수치와 최신 발표 우선 설명은 이전 기록이다.
+
 > **2026-11-22 11:51 KST PostgreSQL 전환 갱신:** 기존 수집 자료와 CSV 7개를 PostgreSQL로 이전했고, 자동수집도 PostgreSQL에 직접 적재한다. 아래 SQLite·DB 미연결·이전 테스트 결과는 그 이전 체크포인트 기록이다. 현재 실행·복원 방법은 [PostgreSQL 인계](POSTGRES_HANDOFF.md), 실제 건수는 [적재 대조](reports/postgres_ingestion_20261122.json), 복원 검증은 [빈 DB 복원 결과](reports/postgres_restore_20261122.json)를 따른다. 수집기 테스트는 PostgreSQL에서 74개 통과했으며 모델·정산·격자 매핑 완료를 뜻하지 않는다.
 
 기준일: **2026-11-22 KST**. `codex/team-data-handoff` 개발 중 체크포인트.

@@ -98,7 +98,7 @@ def validate(raw, kind, params):
 
 
 class Archive:
-    def __init__(self, output, key, daily_calls=18000, daily_bytes=4_800_000_000, delay=0.7):
+    def __init__(self, output, key, daily_calls=18000, daily_bytes=4_800_000_000, delay=0.7, *, live_only=False):
         self.output, self.key = Path(output), key
         self.output.mkdir(parents=True, exist_ok=True)
         self.db = open_store(self.output, "kma")
@@ -106,6 +106,9 @@ class Archive:
         self.session = requests.Session()
         self.last_request = 0.0
         self.last_task = None
+        self.live_only = live_only
+        self.start_day = date.min
+        self.history_first = False
         # Retire old pending/retry night requests; retain already downloaded raw grids.
         self.db.execute(
             "UPDATE tasks SET state='excluded_by_hour_policy' WHERE kind='forecast' "
@@ -136,7 +139,8 @@ class Archive:
             stored = self.db.execute("SELECT value FROM settings WHERE key=?", (queue_key,)).fetchone()
             left = date.fromisoformat(stored[0]) + timedelta(days=1) if stored else start
             pending = self.db.execute(
-                "SELECT count(*) FROM tasks WHERE kind=? AND state='pending'", (kind,)
+                "SELECT count(*) FROM tasks WHERE kind=? AND state='pending' AND day BETWEEN ? AND ?",
+                (kind, str(start), str(end)),
             ).fetchone()[0]
             if pending >= (len(FORECAST_HOURS_KST) * len(VARIABLES) if kind == "forecast" else 24) * 3:
                 continue
@@ -194,10 +198,14 @@ class Archive:
         return cur.lastrowid
 
     def next_task(self, kind):
+        first_day = str(max(self.start_day, datetime.now(KST).date() - timedelta(days=1))) if self.live_only else str(self.start_day)
+        ordering = "day DESC,priority,id" if self.live_only else "priority,day,id"
+        if self.history_first:
+            ordering = "day,priority,id"
         return self.db.execute(
             "SELECT * FROM tasks WHERE kind=? AND state IN ('pending','retry') "
-            "AND due<=? ORDER BY priority,day,id LIMIT 1",
-            (kind, time.time()),
+            "AND due<=? AND day>=? ORDER BY " + ordering + " LIMIT 1",
+            (kind, time.time(), first_day),
         ).fetchone()
 
     def fetch_one(self, kind):
@@ -324,6 +332,8 @@ class Archive:
             "zero_generation_hours_kst": list(ZERO_HOURS_KST),
             "generation_policy": POLICY_VERSION,
             "enabled_sources": ["forecast"] if args.forecast_only else list(ENDPOINTS),
+            "collection_mode": "live_only" if self.live_only else "live_and_history",
+            "collection_priority": "history_first" if self.history_first else "latest_first",
             "variables": list(VARIABLES),
             "history_planned_forecast_requests": ((args.end - args.start).days + 1)
             * len(FORECAST_HOURS_KST)
@@ -364,6 +374,8 @@ def parser():
     p.add_argument("--delay", type=float, default=0.7)
     p.add_argument("--max-calls", type=int, default=0, help="0 keeps running; useful for a bounded smoke run")
     p.add_argument("--no-live", action="store_true")
+    p.add_argument("--live-only", action="store_true", help="Pause historical requests and collect recent/latest issues only")
+    p.add_argument("--history-first", action="store_true", help="Collect training history chronologically before newer issues")
     p.add_argument(
         "--forecast-only", action="store_true", help="Only collect forecasts; retain existing observations"
     )
@@ -379,7 +391,9 @@ def run(args, stop_event=None):
     if not key:
         raise ValueError("KMA_APIHUB_KEY is missing")
     lock = Singleton(args.output / "collector.lock")
-    archive = Archive(args.output, key, args.daily_calls, args.daily_bytes, args.delay)
+    archive = Archive(args.output, key, args.daily_calls, args.daily_bytes, args.delay, live_only=args.live_only)
+    archive.start_day = args.start
+    archive.history_first = args.history_first
     started, last_seed, last_report, calls = now(), 0.0, 0.0, 0
 
     def stopped():
@@ -393,12 +407,17 @@ def run(args, stop_event=None):
         while not stopped():
             try:
                 current = datetime.now(KST)
+                if args.history_first:
+                    # Refill before selecting a task so a depleted seven-day batch
+                    # cannot let newer issues jump ahead of unqueued training days.
+                    archive.seed_history(args.start, current.date(), args.issue_hour, args.forecast_only)
                 if time.monotonic() - last_seed > 300 or not last_seed:
-                    archive.seed_history(args.start, args.end, args.issue_hour, args.forecast_only)
+                    if not args.live_only and not args.history_first:
+                        archive.seed_history(args.start, args.end, args.issue_hour, args.forecast_only)
                     if not args.no_live:
                         archive.seed_live(current, args.issue_hour, args.forecast_only)
                         # Include all dates after the requested historical end, not just latest days.
-                        if current.date() > args.end:
+                        if not args.live_only and not args.history_first and current.date() > args.end:
                             archive.seed_history(
                                 args.end + timedelta(days=1),
                                 current.date(),
@@ -450,6 +469,8 @@ def main():
         or not math.isfinite(args.delay)
         or args.delay < 0.2
         or args.max_calls < 0
+        or (args.live_only and args.no_live)
+        or (args.history_first and args.live_only)
     ):
         p.error("Invalid dates, limits or delay")
     run(args)

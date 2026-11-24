@@ -105,7 +105,7 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
-    command: [python, api.py, --kma-hub, --forecast-only]
+    command: [python, api.py, --kma-hub, --forecast-only, --history-first, --start, "2026-06-01"]
     volumes:
       - ./data:/app/data
       - ./.env:/app/.env:ro

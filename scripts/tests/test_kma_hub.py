@@ -12,12 +12,64 @@ from scripts.collect_public_history import KST
 GRID = ("-99," * (149 * 253 - 1) + "7.5").encode()
 
 
+def test_live_only_preserves_history_and_moves_recent_window_on_rollover(tmp_path, monkeypatch):
+    from scripts import collect_kma_hub as hub
+
+    clock = [datetime(2026, 11, 22, 12, tzinfo=KST)]
+
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return clock[0].astimezone(tz)
+
+    monkeypatch.setattr(hub, "datetime", Clock)
+    archive = Archive(tmp_path, "secret", live_only=True)
+    for day in (date(2022, 1, 1), date(2026, 11, 21), date(2026, 11, 23)):
+        archive.seed_day("forecast", day)
+    assert archive.next_task("forecast")["day"] == "2026-11-23"
+    archive.db.execute("UPDATE tasks SET state='ok' WHERE day='2026-11-23'")
+    archive.db.commit()
+    assert archive.next_task("forecast")["day"] == "2026-11-21"
+    clock[0] += timedelta(days=1)
+    assert archive.next_task("forecast") is None
+    assert archive.db.execute("SELECT count(*) FROM tasks WHERE day='2022-01-01' AND state='pending'").fetchone()[0] == 224
+    archive.live_only = False
+    assert archive.next_task("forecast")["day"] == "2022-01-01"
+    archive.close()
+
+
 def test_forecast_only_does_not_enqueue_observations(tmp_path):
     archive = Archive(tmp_path, "secret")
     archive.seed_history(date(2022, 1, 1), date(2022, 1, 1), 8, forecast_only=True)
     archive.seed_live(datetime(2026, 11, 22, 12, tzinfo=KST), 8, forecast_only=True)
     assert archive.db.execute("SELECT count(*) FROM tasks WHERE kind='observation'").fetchone()[0] == 0
     assert archive.next_task("forecast") is not None
+    archive.close()
+
+
+def test_new_start_excludes_old_queue_without_blocking_new_history(tmp_path):
+    archive = Archive(tmp_path, "secret")
+    archive.seed_history(date(2022, 1, 1), date(2022, 1, 31), 8, forecast_only=True)
+    archive.start_day = date(2026, 6, 1)
+    archive.seed_history(archive.start_day, date(2026, 10, 31), 8, forecast_only=True)
+    assert archive.next_task("forecast")["day"] == "2026-06-01"
+    assert archive.db.execute("SELECT count(*) FROM tasks WHERE day<'2026-06-01'").fetchone()[0] == 7 * 224
+    archive.seed_live(datetime(2026, 11, 22, 12, tzinfo=KST), 8, forecast_only=True)
+    assert archive.next_task("forecast")["day"] == "2026-11-23"
+    archive.close()
+
+
+def test_history_first_refills_training_days_before_latest_issue(tmp_path):
+    archive = Archive(tmp_path, "secret")
+    archive.start_day = date(2026, 6, 1)
+    archive.history_first = True
+    archive.seed_live(datetime(2026, 11, 22, 12, tzinfo=KST), 8, forecast_only=True)
+    archive.seed_history(archive.start_day, date(2026, 11, 22), 8, forecast_only=True)
+    assert archive.next_task("forecast")["day"] == "2026-06-01"
+    archive.db.execute("UPDATE tasks SET state='ok' WHERE day BETWEEN '2026-06-01' AND '2026-06-07'")
+    archive.db.commit()
+    archive.seed_history(archive.start_day, date(2026, 11, 22), 8, forecast_only=True)
+    assert archive.next_task("forecast")["day"] == "2026-06-08"
     archive.close()
 
 
