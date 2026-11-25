@@ -1,3 +1,6 @@
 local_config.json
 __pycache__/
 *.log
+db_connection.local.json
+.env
+.env.*

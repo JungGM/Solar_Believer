@@ -1,0 +1,6 @@
+{
+  "host": "100.102.164.7",
+  "port": 15432,
+  "database": "solar_believer",
+  "user": "solar"
+}

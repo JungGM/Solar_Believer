@@ -1,5 +1,8 @@
 # PostgreSQL 적재와 다른 PC에서 자동수집 이어받기
 
+> **2026-11-25 팀원 원격 접속:** 메인 DB를 함께 사용할 때는 [최소 설치와 Meteo 수집·기존 응답 이관 요청](TEAM_METEO_DB_HANDOFF.md)을 따른다.
+> 아래는 새 PC의 별도 DB 복원 안내이며, 기존 메인 DB로의 병합 절차가 아니다.
+
 현재 수집기는 **PostgreSQL만** 사용한다. 새 SQLite DB를 만들거나 SQLite로 대체하지 않는다.
 기존 SQLite 파일은 이전 원본 보존용이며 `scripts/migrate_collected_data.py`에서 읽기 전용으로만 접근한다.
 API 응답 저장, 일별 원천 레코드, 서비스 시간별 관측값을 PostgreSQL에 저장한다.
