@@ -190,15 +190,17 @@ export default function EnergyChart({
           {axis}
           <Tooltip formatter={(v, name) => [`${fmt(v)} MWh`, name]} />
           <Legend iconType="plainline" wrapperStyle={{ fontSize: 11 }} />
-          <Line
-            name="실제 발전량"
-            dataKey="actual_mwh"
-            stroke="#377659"
-            strokeWidth={2.5}
-            dot={false}
-            connectNulls={false}
-            isAnimationActive={false}
-          />
+          {data.some((r) => r.actual_mwh !== null) && (
+            <Line
+              name="실제 발전량"
+              dataKey="actual_mwh"
+              stroke="#377659"
+              strokeWidth={2.5}
+              dot={false}
+              connectNulls={false}
+              isAnimationActive={false}
+            />
+          )}
           <Line
             name="예측 발전량"
             dataKey="predicted_mwh"

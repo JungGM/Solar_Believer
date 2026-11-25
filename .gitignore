@@ -37,3 +37,7 @@ artifacts/
 *.pt
 *.onnx
 *.log
+
+# Reassembled database archives are local; verified split backup parts are versioned explicitly.
+transfer/**/postgres.dump
+transfer/**/postgres.restore.dump

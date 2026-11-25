@@ -79,3 +79,50 @@ Docker 없는 개발 방법은 문서화했으며 별도 팀원의 비Docker 환
 프런트 npm 설치 audit에서 취약점 0개였고 production build가 통과했다.
 차트·React 의존성을 별도 chunk로 나눴다. 원격 CI는 여전히 템플릿이며 실행되지 않았다.
 실제 API/모델 성능·정산 엔진·자동 VPP 배치·대량 자산 부하 검증은 이번 결과에 포함하지 않는다.
+
+## 2026-11-19 팀원 인계 문서 검증
+
+기준: `main@2a58fe2`, 브랜치 `codex/team-data-handoff`. 이번 변경은 Markdown 문서만 포함한다.
+위 11-17 기반 구조의 54 tests 통과 기록을 이후 live 어댑터의 통과 결과로 확대하지 않는다.
+
+| 확인 항목 | 결과 | 범위 |
+|---|---|---|
+| 최신 원격 확인 | 완료 | origin/main의 4512c8b·2a58fe2와 기존 PR #1 상태 확인 |
+| 원천 CSV 기본 집계 | 완료 | 6개 파일 행 수·시간 범위, 남동 23개 ID·메타데이터 등록 용량, SMP 육지/제주 행 수. TEAM_HANDOFF.md 참고 |
+| 알려진 호출 인자 불일치 | 확인 | AST에서 얻은 실제 함수 서명에 호출 인자를 bind: 관측 api_key·예보 nx가 각각 TypeError. 네트워크 호출/런타임 통합 재현은 아님 |
+| 예보 반환값 계약 | 확인 | 기존 함수 DataFrame 반환 컬럼과 원시 dict 목록을 가정한 어댑터 코드 대조 |
+| 공식 API·규칙 근거 | 확인 | 남동·남부·중부·서부·SMP 명세와 2026-10-31 규칙 공고 확인. 실제 최신 응답·자원 수는 미검증 |
+| 문서 검사 | 통과 | UTF-8 읽기·코드 fence 짝·변경 문서 상대 링크 대상·git diff --check |
+| 코드·데이터 보존 | 확인 | 변경 파일은 README/docs의 Markdown만. 원천 CSV·수집기·모델·DB schema 수정 없음 |
+| API 키 상태 | 로컬 미설정 | 이 PC .env/호스트 프로세스의 DATA_GO_KR_API_KEY·KMA_APIHUB_KEY는 비어 있음. 팀원 환경은 미확인. 키 값은 출력하지 않음 |
+| Docker·실제 서비스 | 미검증 | docker info에서 Linux 엔진 named pipe 연결 실패. 이번에는 컨테이너·DB·HTTP·실제 API·학습·정산 테스트를 실행하지 않음 |
+
+문서의 체크박스·완료 기준은 후속 구현 요구이며 실행 성공 증거가 아니다.
+200개 이상의 지속 수집 자원 확보, 과거 예보, DB 적재·품질·정산 엔진 검증은 후속 작업으로 남는다.
+
+## 2026-11-22 전체 진행·소스 체크포인트 검증
+
+11월 19일 이후 로컬 수집·전처리·웹 소스와 전체 진행을 함께 기록한다.
+현재 기준은 [PROGRESS](PROGRESS.md), 집계 사본은 [스냅샷](reports/progress_20261122.json)이다.
+이전 54개 통과 및 DASHBOARD의 이전 화면 검증을 현재 전체 통과로 확대하지 않는다.
+
+| 검사 | 이번 결과 |
+|---|---|
+| `.venv/Scripts/python.exe -m pytest -q` | **88 passed, 6 failed, 27 skipped**, 종료 코드 1. PostgreSQL 미실행 |
+| `.venv/Scripts/python.exe -m ruff check backend scripts` | F811 5건, test_workspace.py fixture 이름 충돌, 종료 코드 1 |
+| `npm run build` | 현재 셸에서 npm 명령을 찾지 못해 빌드 미실행 |
+| 로컬 수집 보고서 확인 | coverage·이전 integrity audit·collector status·모델용 출력 집계 직접 읽음. 새 원문 전수 감사는 실행하지 않음 |
+| 수집 프로세스 | 상태 파일 PID 3552 / 12524에 해당하는 Python 프로세스 존재 확인. 연속 성공이나 이후 실행 보장은 아님 |
+| 원격 상태 | origin fetch와 PR #2 재조회: 기존 원격 head bacb186, open·미병합, main 2a58fe2 |
+| 비공개 파일 | .env·새 data/·DB·로그·artifacts는 이번 추가 대상에서 제외. 로컬 설정 비밀값과 변경 소스의 일치 여부는 값 출력 없이 검사 |
+| 외부/DB/학습/정산 | 이번 기록 작업에서 실행하지 않음 |
+
+실패 테스트는 dashboard 4건(포트폴리오 합산·VPP 비상쇄·cutoff/개정·KST 정규화),
+workspace 2건(하루 전 선택·동일 시간 오차)이다. 자정 비영 기대값과 야간 0 정책이 충돌하는 형태를 확인했다.
+정책 검증과 낮 시간 집계/예측 선택 검증을 함께 유지하도록 후속 수정한다.
+진행 기록 요청에서 애플리케이션/테스트 구현을 추가 변경하지 않았으며 실패를 완료로 표시하지 않는다.
+
+기존 파일 수집기와 서비스 DB live adapter는 별도 경로다. 파일 수집 성공으로 기존 호출 계약 문제나 DB 적재가 해결되지는 않는다.
+
+문서 UTF-8·코드 fence·상대 링크 62개를 검사해 통과했다. 스테이징 파일에서 로컬 설정 비밀값 일치도 없었다.
+동시에 수정되기 시작한 `backend/tests/test_dashboard.py`의 후속 작업은 이번 스테이징에 포함하지 않았다.

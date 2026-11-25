@@ -1,0 +1,237 @@
+{
+  "captured_at_utc": "2026-11-21T18:48:28.440089+00:00",
+  "basis": "Local saved reports read on 2026-11-22 KST; no new network requests or DB ingestion in this checkpoint. Counts are snapshots, not verified independent live generators.",
+  "history": {
+    "koen": {
+      "source": "koen",
+      "status": "download_finished",
+      "stored_records": 39837,
+      "hourly_rows": 956088,
+      "missing_hour_values": 0,
+      "resource_count": 23,
+      "generated_at_utc": "2026-11-21T13:22:49.086721+00:00",
+      "resource_report_fields": [
+        "resource_id",
+        "name",
+        "first_day",
+        "last_day",
+        "days",
+        "missing_days_between_first_and_last"
+      ],
+      "model_export": {
+        "policy": "fixed_kst_00_05_22_23_zero_v1",
+        "rows": 956088,
+        "night_rows": 318696,
+        "positive_values_zeroed": 13147,
+        "excluded_non_solar": 0
+      }
+    },
+    "kospo": {
+      "source": "kospo",
+      "status": "download_finished",
+      "stored_records": 24846,
+      "hourly_rows": 596304,
+      "missing_hour_values": 0,
+      "resource_count": 32,
+      "generated_at_utc": "2026-11-21T13:13:25.540282+00:00",
+      "resource_report_fields": [
+        "resource_id",
+        "name",
+        "first_day",
+        "last_day",
+        "days",
+        "missing_days_between_first_and_last"
+      ],
+      "model_export": {
+        "policy": "fixed_kst_00_05_22_23_zero_v1",
+        "rows": 596304,
+        "night_rows": 198768,
+        "positive_values_zeroed": 2726,
+        "excluded_non_solar": 0
+      }
+    },
+    "komipo": {
+      "source": "komipo",
+      "status": "stopped",
+      "stored_records": 15996,
+      "hourly_rows": 383904,
+      "missing_hour_values": 0,
+      "resource_count": 25,
+      "generated_at_utc": "2026-11-21T13:18:53.074589+00:00",
+      "resource_report_fields": [
+        "resource_id",
+        "name",
+        "first_day",
+        "last_day",
+        "days",
+        "missing_days_between_first_and_last"
+      ],
+      "model_export": {
+        "policy": "fixed_kst_00_05_22_23_zero_v1",
+        "rows": 383904,
+        "night_rows": 127968,
+        "positive_values_zeroed": 2526,
+        "excluded_non_solar": 0
+      }
+    },
+    "iwest": {
+      "source": "iwest",
+      "status": "stopped",
+      "stored_records": 12068,
+      "hourly_rows": 289632,
+      "missing_hour_values": 528,
+      "resource_count": 45,
+      "generated_at_utc": "2026-11-21T18:47:29.556711+00:00",
+      "resource_report_fields": [
+        "resource_id",
+        "name",
+        "first_day",
+        "last_day",
+        "days",
+        "missing_days_between_first_and_last",
+        "capacity_raw",
+        "identity_basis"
+      ],
+      "model_export": {
+        "policy": "fixed_kst_00_05_22_23_zero_v1",
+        "rows": 205128,
+        "night_rows": 68376,
+        "positive_values_zeroed": 999,
+        "excluded_non_solar": 84504
+      }
+    },
+    "smp": {
+      "source": "smp",
+      "status": "download_finished",
+      "stored_records": 84720,
+      "hourly_rows": 84720,
+      "missing_hour_values": 0,
+      "resource_count": 48,
+      "generated_at_utc": "2026-11-21T13:21:33.505450+00:00",
+      "resource_report_fields": [
+        "resource_id",
+        "name",
+        "first_day",
+        "last_day",
+        "days",
+        "missing_days_between_first_and_last"
+      ]
+    },
+    "forecast": {
+      "source": "forecast",
+      "status": "stopped",
+      "stored_records": 0,
+      "hourly_rows": 0,
+      "missing_hour_values": 0,
+      "resource_count": 0,
+      "generated_at_utc": "2026-11-21T13:12:31.571088+00:00",
+      "resource_report_fields": []
+    }
+  },
+  "public_collector": {
+    "state": "waiting",
+    "started_at_utc": "2026-11-21T18:45:15.191762+00:00",
+    "last_cycle_finished_at_utc": "2026-11-21T18:47:30.058645+00:00",
+    "next_run_at_utc": "2026-11-21T19:45:15.191829+00:00",
+    "cycles_completed": 1,
+    "interval_minutes": 60.0
+  },
+  "kma_hub": {
+    "state": "collecting",
+    "updated_at_utc": "2026-11-21T18:48:24.036991+00:00",
+    "history_start": "2022-01-01",
+    "history_end": "2026-10-31",
+    "enabled_sources": [
+      "forecast"
+    ],
+    "issue_hour_kst": 8,
+    "forecast_target": "next calendar day 06..21 KST",
+    "variables": [
+      "TMP",
+      "TMX",
+      "TMN",
+      "UUU",
+      "VVV",
+      "VEC",
+      "WSD",
+      "SKY",
+      "PTY",
+      "POP",
+      "PCP",
+      "SNO",
+      "REH",
+      "WAV"
+    ],
+    "history_planned_forecast_requests": 395360,
+    "daily_call_limit": 18000,
+    "daily_byte_limit": 4800000000,
+    "usage_today": {
+      "day_kst": "2026-11-22",
+      "calls": 815,
+      "bytes": 270912761
+    },
+    "queued_task_counts": {
+      "forecast": {
+        "excluded_by_hour_policy": 812,
+        "ok": 793,
+        "pending": 1416,
+        "retry": 3
+      },
+      "observation": {
+        "ok": 9,
+        "pending": 209,
+        "retry": 1
+      }
+    },
+    "history": {
+      "forecast": {
+        "excluded_by_hour_policy": {
+          "requests": 784,
+          "first_target_day": "2022-01-01",
+          "last_target_day": "2022-01-07"
+        },
+        "ok": {
+          "requests": 152,
+          "first_target_day": "2022-01-01",
+          "last_target_day": "2022-01-01"
+        },
+        "pending": {
+          "requests": 1416,
+          "first_target_day": "2022-01-01",
+          "last_target_day": "2022-01-07"
+        }
+      },
+      "observation": {
+        "pending": {
+          "requests": 167,
+          "first_target_day": "2022-01-01",
+          "last_target_day": "2022-01-07"
+        },
+        "retry": {
+          "requests": 1,
+          "first_target_day": "2022-01-01",
+          "last_target_day": "2022-01-01"
+        }
+      }
+    },
+    "generation_policy": "fixed_kst_00_05_22_23_zero_v1"
+  },
+  "historical_integrity_audit": {
+    "report": "data/api_history_20220101_20261031/integrity_audit.json",
+    "note": "Earlier response-hash/checkpoint/export consistency audit; its passed flag does not certify full requested coverage. IWest audit precedes latest coverage export and contains incomplete pagination."
+  },
+  "checks": {
+    "pytest": {
+      "passed": 88,
+      "failed": 6,
+      "skipped": 27,
+      "postgres_executed": false
+    },
+    "ruff": {
+      "errors": 5,
+      "code": "F811",
+      "path": "backend/tests/test_workspace.py"
+    },
+    "frontend_build": "Not rerun: npm unavailable on current PATH; earlier build/UI observations remain separately dated in docs/DASHBOARD.md."
+  }
+}

@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .db import get_session
+from .generation_policy import model_generation, POLICY_VERSION
 from .models import ModelVersion, Observation, Plant, Prediction, VppMembership, VppPortfolio, VppSettlement
 
 router = APIRouter(prefix="/api/v1/dashboard", tags=["Dashboard"])
@@ -77,7 +78,7 @@ def real_options(session):
     }
 
 
-def load_real(session, start, end, portfolio_id, model_id, rule):
+def load_real(session, start, end, portfolio_id, model_id, rule, prediction_policy="latest"):
     options = real_options(session)
     if portfolio_id is not None and portfolio_id not in [p["id"] for p in options["portfolios"]]:
         raise ValueError("Unknown portfolio")
@@ -127,6 +128,7 @@ def load_real(session, start, end, portfolio_id, model_id, rule):
             value = number(row.values.get("smp_krw_kwh"))
             if value is not None:
                 prices[(row.scope_id.removeprefix("market:"), timestamp)] = value
+    prediction_times = {}
     if model_id is not None:
         rows = session.scalars(
             select(Prediction)
@@ -141,9 +143,17 @@ def load_real(session, start, end, portfolio_id, model_id, rule):
             .order_by(Prediction.cutoff_at, Prediction.id)
         ).all()
         for row in rows:
+            if prediction_policy == "day_ahead":
+                # Service comparison convention, not an official submission deadline.
+                target_day = aware(row.target_at).astimezone(KST).date()
+                deadline = datetime.combine(target_day - timedelta(days=1), datetime.min.time(), KST)
+                deadline += timedelta(hours=18)
+                if aware(row.cutoff_at) > deadline or aware(row.created_at) > min(deadline, now):
+                    continue
             value = number(row.generation_kwh)
             if value is not None and value >= 0:
                 predicted[(row.scope_id, aware(row.target_at))] = value
+                prediction_times[(row.scope_id, aware(row.target_at))] = aware(row.created_at)
         if rule:
             rows = session.scalars(
                 select(VppSettlement).where(
@@ -191,6 +201,7 @@ def load_real(session, start, end, portfolio_id, model_id, rule):
         "prices": prices,
         "settlements": settlements,
         "is_demo": False,
+        "prediction_generated_at": max(prediction_times.values()).isoformat() if prediction_times else None,
     }
 
 
@@ -283,6 +294,9 @@ def average(values):
 
 
 def aggregate(snapshot, period, selected, start, end):
+    snapshot = dict(snapshot)
+    for field in ("actual", "predicted"):
+        snapshot[field] = {key: model_generation(value, key[1]) for key, value in snapshot[field].items()}
     plants = {p["id"]: p.copy() for p in snapshot["plants"]}
     plant_rows = {
         p: {"actual": [], "predicted": [], "errors": [], "expected": 0, "groups": set()} for p in plants
@@ -309,7 +323,10 @@ def aggregate(snapshot, period, selected, start, end):
         a = sum(actual) if expected and all(v is not None for v in actual) else None
         p = sum(predicted) if expected and all(v is not None for v in predicted) else None
         error = None
+        individual_error = None
         if a is not None and p is not None and len(memberships) == len(active):
+            individual_error = sum(abs(snapshot["predicted"][(plant, timestamp)]
+                                       - snapshot["actual"][(plant, timestamp)]) for plant in active)
             # Net within each VPP first; independent VPPs cannot cancel each other.
             error = sum(
                 abs(
@@ -329,6 +346,7 @@ def aggregate(snapshot, period, selected, start, end):
             "actual_kwh": a,
             "predicted_kwh": p,
             "absolute_error_kwh": error,
+            "individual_absolute_error_kwh": individual_error,
             "smp_land": snapshot["prices"].get(("land", timestamp)) if "land" in zones else None,
             "smp_jeju": snapshot["prices"].get(("jeju", timestamp)) if "jeju" in zones else None,
             "settlement_krw": sum(r["amount"] for r in results) if complete_money else None,
@@ -352,7 +370,10 @@ def aggregate(snapshot, period, selected, start, end):
         hours.append(row)
         timestamp += timedelta(hours=1)
     series = []
-    energy_fields = ("actual_kwh", "predicted_kwh", "absolute_error_kwh", "settlement_krw", "loss_krw")
+    energy_fields = (
+        "actual_kwh", "predicted_kwh", "absolute_error_kwh",
+        "individual_absolute_error_kwh", "settlement_krw", "loss_krw",
+    )
     for label, rows in buckets.items():
         expected_rows = [r for r in rows if r["expected"]]
         item = {"label": label, "timestamp": rows[0]["timestamp"], "expected_hours": len(expected_rows)}
@@ -407,6 +428,7 @@ def aggregate(snapshot, period, selected, start, end):
         "series": series,
         "warnings": warnings,
         "prediction_policy": "대상 시각까지 생성된 최신 예측 · 모델별 동일 선택 정책",
+        "generation_policy": POLICY_VERSION,
         "error_policy": "VPP 내 합산 후 절대오차 계산 · 여러 VPP는 절대오차를 합산",
         "settlement": {
             "rule_version": snapshot["rule"],
@@ -424,6 +446,7 @@ def aggregate(snapshot, period, selected, start, end):
             "predicted_kwh": total(r["predicted_kwh"] for r in hours),
             "actual_kwh": total(r["actual_kwh"] for r in hours),
             "mae_kwh": average(r["absolute_error_kwh"] for r in hours),
+            "individual_mae_kwh": average(r["individual_absolute_error_kwh"] for r in hours),
             "expected_hours": expected_hours,
             "predicted_hours": sum(r["predicted_kwh"] is not None for r in hours),
             "actual_hours": sum(r["actual_kwh"] is not None for r in hours),
@@ -449,6 +472,7 @@ def dashboard(
     model_version_id: int | None = None,
     settlement_rule_version: str | None = Query(default=None, max_length=100),
     demo: bool = False,
+    prediction_policy: Literal["latest", "day_ahead"] = "latest",
     session: Session = Depends(get_session),
 ):
     selected = selected_date or datetime.now(KST).date()
@@ -457,8 +481,16 @@ def dashboard(
         snapshot = (
             load_demo(start, end, portfolio_id, model_version_id, settlement_rule_version)
             if demo
-            else load_real(session, start, end, portfolio_id, model_version_id, settlement_rule_version)
+            else load_real(
+                session, start, end, portfolio_id, model_version_id,
+                settlement_rule_version, prediction_policy,
+            )
         )
-        return aggregate(snapshot, period, selected, start, end)
+        result = aggregate(snapshot, period, selected, start, end)
+        result["prediction_generated_at"] = snapshot.get("prediction_generated_at")
+        result["prediction_selection"] = prediction_policy
+        if prediction_policy == "day_ahead":
+            result["prediction_policy"] = "전일 18:00 KST까지 생성·기준 시각이 확인된 예측 · 서비스 비교 기준"
+        return result
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from None

@@ -1,6 +1,10 @@
 # 실제 API와 모델을 연결할 위치
 
-현재 확정 방향은 개별 발전소별 예측과 20MW 목표 VPP 구성이다. `API/kpx_collector.py`의
+**2026-11-22 현재 상태:** [전체 진행 기록](PROGRESS.md)에 독립 수집기·기상청 역사 예보·전처리·새 웹 메뉴·미연결 범위를 정리했다. 아래 기존 설명의 기준일과 현재 구현을 구분한다.
+
+2026-11-19 업데이트: 먼저 [팀원 작업 인계](TEAM_HANDOFF.md)의 D01~D07과
+[정산 구현 명세](SETTLEMENT_RULES.md)를 읽는다. 지속 수집 가능한 발전기 200개 이상과
+최소 2개 VPP가 목표이며 예측제도 기준 그룹별 주요자원 용량은 20MW 초과다. `API/kpx_collector.py`의
 시도별 발전량은 해당 모델의 실측 원천으로 사용하지 않는다. 새 발전소별 원천 후보와
 키 담당·수집 가능 상태는 [데이터 요구](DATA_REQUIREMENTS.md)를 따른다.
 발전소/VPP/구성원/그룹 정산 테이블과 조회 API는 추가되었다.
@@ -18,9 +22,12 @@
 4. `store_records`로 트랜잭션 저장한다. 예보는 `issued_at` 필수이고 naive 시각을 거부한다.
    동일 출처/키의 중복은 유지한다. 수정된 원천 값은 개정 번호를 키에 넣어 새 버전으로 보존한다.
 5. 성공/부분 성공/실패 및 쿼터 정책을 정하고 테스트한 뒤 `PIPELINE_MODE=live`를 연결한다.
-   현재 live는 의도적으로 skipped다. 기존 키를 자동 사용하지 않는다.
+   현재 live에는 남동·SMP·기상 어댑터 호출 코드가 있으나 관측/예보 인자·반환형 결함이 남아 있다.
+   기본 disabled 또는 키 미설정이면 skipped가 되며, live 오류는 failed가 될 수 있다.
+   코드가 있다는 사실을 실제 호출·DB 저장 성공으로 기록하지 않는다.
 
-`docs/REPOSITORY_AUDIT.md`의 기존 결측·시간·로깅 문제를 먼저 해결한다.
+`docs/REPOSITORY_AUDIT.md`의 기존 결측·시간·로깅 문제와 `TEAM_HANDOFF.md`의 신규 어댑터 결함을 먼저 해결한다.
+`data/raw/` CSV는 컨테이너/DB에 자동 적재되지 않는다. 별도 검증·적재 절차를 추가한다.
 발전소 허가 정보와 KPX 지역 집계 발전량을 개별 발전소 실측으로 혼용하지 않는다.
 
 ## 기존 GitHub 모델 재사용
@@ -66,6 +73,7 @@ docker compose exec worker python -m backend.app.cli activate-model VERSION
 ## 정산 규칙
 
 `UnconfiguredSettlementRule`은 항상 설정 필요 예외를 발생시킨다.
+공식 규칙의 조사 결과와 식·검증 항목은 [정산 구현 명세](SETTLEMENT_RULES.md)를 따른다.
 시장, 적용 시점, 가격 종류, 발전량 단위, 정산 대상, 수수료·인센티브 및
 결측 처리가 확정되면 `SettlementRule`을 구현하고 `Settlement` 저장에 연결한다.
 근거 문서·규칙 버전·입력 출처를 `details`에 남기고 시뮬레이션 여부를 명시한다.

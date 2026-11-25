@@ -1,0 +1,69 @@
+{
+  "format": "PostgreSQL custom archive",
+  "created_at_utc": "2026-11-22T02:51:53.809176+00:00",
+  "database": "solar_believer",
+  "bytes": 291995460,
+  "sha256": "c5da7d66f6e20dbadda2dbd62c9e737877fda919b0d0b9d6f1fb134e4298b379",
+  "parts": [
+    {
+      "file": "postgres.dump.part000",
+      "bytes": 41943040,
+      "sha256": "c9c166b08de9fea68d6d31704a5cac8c71d10260f0dbd68deef83f6a635e46ef"
+    },
+    {
+      "file": "postgres.dump.part001",
+      "bytes": 41943040,
+      "sha256": "f985f40a5e7a3eb550164a09168b580945575b8b11c83d757a43f72926fb55f2"
+    },
+    {
+      "file": "postgres.dump.part002",
+      "bytes": 41943040,
+      "sha256": "20dfbbb41b6f2430ef245a5d5625983166bc818f47da31bf48df8210a3c43e3e"
+    },
+    {
+      "file": "postgres.dump.part003",
+      "bytes": 41943040,
+      "sha256": "a29a1ad19a6c209403b9a6d1ab8f01156ec295b0ec2df71c75ab17f76786fbe2"
+    },
+    {
+      "file": "postgres.dump.part004",
+      "bytes": 41943040,
+      "sha256": "c8900ef6ca5fe3f81534f17abb8803a9d3f49db85215c2f038f8e19ec291ee34"
+    },
+    {
+      "file": "postgres.dump.part005",
+      "bytes": 41943040,
+      "sha256": "63f15cfa174c36613aeb8460bec184b1f12d745ff359d9b00128064e173fdf5c"
+    },
+    {
+      "file": "postgres.dump.part006",
+      "bytes": 40337220,
+      "sha256": "9895eac80b144bd49dbc20efcae6e743b7d755e453b91955c15ae5d1cef9103b"
+    }
+  ],
+  "counts": {
+    "observations": {
+      "demo": 3,
+      "iwest_generation": 354432,
+      "kma_vilage_forecast": 393601,
+      "koen_solar": 956088,
+      "komipo_solar": 383904,
+      "kospo_solar": 607992,
+      "kpx_smp": 85800
+    },
+    "source_datasets": {
+      "api_history_20220101_20261031/supplementary_official_files/iwest_15095865_20260630.csv": 6575,
+      "raw/kma_obs_20220101_20261031.csv": 719781,
+      "raw/koen_plants_meta.csv": 23,
+      "raw/koen_solar_20220101_20261031.csv": 955344,
+      "raw/kpx_smp_20220101_20261031.csv": 84696,
+      "raw/kpx_solar_20220101_20260926.csv": 704520,
+      "raw/solar_plants_permit.csv": 50000
+    },
+    "forecast_grids": 5188,
+    "database_bytes": 3290803347
+  },
+  "collector_state_included": true,
+  "sqlite_runtime": false,
+  "note": "API credentials are configured locally in .env; no API keys are needed to restore the database."
+}

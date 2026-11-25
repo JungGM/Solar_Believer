@@ -73,6 +73,44 @@ services:
       timeout: 3s
       retries: 6
 
+  collector:
+    profiles: [collector]
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: runtime
+    env_file: .env
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    command: [python, api.py, --continuous]
+    volumes:
+      - ./data:/app/data
+      - ./.env:/app/.env:ro
+    restart: unless-stopped
+
+  kma-collector:
+    profiles: [collector]
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: runtime
+    env_file: .env
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    command: [python, api.py, --kma-hub, --forecast-only, --history-first, --start, "2026-06-01"]
+    volumes:
+      - ./data:/app/data
+      - ./.env:/app/.env:ro
+    restart: unless-stopped
+
   tests:
     profiles: [test]
     build:
