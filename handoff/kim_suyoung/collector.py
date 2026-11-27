@@ -1,4 +1,4 @@
-"""Standalone Open-Meteo archive collector. Python 3.10+, standard library only."""
+"""Standalone Open-Meteo archive collector with optional main PostgreSQL dual-write & offline retry buffer."""
 import argparse, base64, gzip, hashlib, json, math, os, signal, time
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -76,12 +76,73 @@ def lock_file(path):
         f.close(); raise RuntimeError("Collector already running for this output folder")
     return f
 
+def _build_db_writer(args):
+    if getattr(args, "db_writer", None) is not None:
+        return args.db_writer
+    use_db = getattr(args, "db", False) or bool(os.environ.get("POSTGRES_PASSWORD")) or (ROOT / "db_connection.local.json").exists()
+    if not use_db:
+        return None
+    try:
+        from db_writer import MainDBWriter, load_db_target
+        target = load_db_target(getattr(args, "db_config", None))
+        if not target.get("password"):
+            return None
+        return MainDBWriter(target)
+    except Exception:
+        return None
+
+def _flush_pending_to_db(output: Path, state: dict, writer, max_flush: int = 5) -> int:
+    if writer is None:
+        return 0
+    from db_writer import parse_and_validate_envelope
+    cp_path = output / "db_ingest_checkpoint.json"
+    cp = json.loads(cp_path.read_text(encoding="utf-8")) if cp_path.exists() else {"ingested": {}, "failed": {}}
+    flushed = 0
+    for key, info in list(state.get("tasks", {}).items()):
+        if flushed >= max_flush:
+            break
+        if info.get("state") not in ("complete", "partial", "unavailable"):
+            continue
+        if info.get("db_ingested") or key in cp.get("ingested", {}):
+            info["db_ingested"] = True
+            continue
+        rel_file = info.get("file")
+        if not rel_file:
+            continue
+        gz_path = output / rel_file
+        if not gz_path.exists():
+            continue
+        try:
+            parsed = parse_and_validate_envelope(gz_path)
+            res = writer.ingest_parsed_envelope(parsed, record_api_call=False)
+            cp.setdefault("ingested", {})[key] = {
+                "file": rel_file.replace("\\", "/"),
+                "file_task_id": key,
+                "canonical_task_id": res["canonical_task_id"],
+                "request_id": res["request_id"],
+                "sha256": parsed["sha256"],
+                "state": parsed["coverage"]["state"],
+                "imported_at_utc": datetime.now(UTC).isoformat(),
+            }
+            cp.get("failed", {}).pop(rel_file.replace("\\", "/"), None)
+            atomic(cp_path, cp)
+            info["db_ingested"] = True
+            info.pop("db_error", None)
+            flushed += 1
+        except Exception as exc:
+            writer.close()
+            info["db_ingested"] = False
+            info["db_error"] = type(exc).__name__
+            break
+    return flushed
+
 def run(args):
     global STOP
     STOP = False
     output = Path(args.output).expanduser().resolve()
     output.mkdir(parents=True, exist_ok=True)
     lock = lock_file(output / "collector.lock")
+    writer = _build_db_writer(args)
     try:
         locations = json.loads((ROOT / "locations.json").read_text(encoding="utf-8-sig"))
         state_path = output / "state.json"
@@ -90,16 +151,29 @@ def run(args):
         items = list(tasks(locations, args.start, args.end))
         def report(status):
             counts = {}
+            db_synced = 0
+            db_pending = 0
             for t in items:
-                s = state["tasks"].get(task_id(t), {}).get("state", "pending")
+                info = state["tasks"].get(task_id(t), {})
+                s = info.get("state", "pending")
                 counts[s] = counts.get(s, 0) + 1
-            atomic(output / "status.json", {"updated_at_utc": datetime.now(UTC).isoformat(), "state": status,
+                if s in ("complete", "partial", "unavailable"):
+                    if info.get("db_ingested"):
+                        db_synced += 1
+                    else:
+                        db_pending += 1
+            doc = {"updated_at_utc": datetime.now(UTC).isoformat(), "state": status,
                 "start_kst": str(args.start), "end_kst": str(args.end), "coordinates": len(locations),
                 "resource_members": sum(len(l["members"]) for l in locations), "tasks": counts,
-                "note": "partial/unavailable are saved responses, not complete training data"})
+                "db_enabled": writer is not None, "db_synced_tasks": db_synced, "db_pending_tasks": db_pending,
+                "note": "partial/unavailable are saved responses, not complete training data"}
+            atomic(output / "status.json", doc)
         successes = 0
         while not STOP:
             attempted = False
+            if writer is not None:
+                if _flush_pending_to_db(output, state, writer, max_flush=5) > 0:
+                    atomic(state_path, state)
             for task in items:
                 if STOP: break
                 key = task_id(task)
@@ -109,6 +183,27 @@ def run(args):
                 cost = math.ceil((date.fromisoformat(task["end_date"])-date.fromisoformat(task["start_date"])).days/14 + 1/14)*2
                 state["calls"] = [[t,c] for t,c in state["calls"] if t > time.time()-86400]
                 wait = max(quota_wait(state["calls"], cost, time.time()), state.get("blocked_until", 0)-time.time())
+                reserved_call_id = None
+                if writer is not None and wait <= 0:
+                    try:
+                        if hasattr(writer, "claim_task_and_reserve_quota"):
+                            claim_status, db_wait, reserved_call_id = writer.claim_task_and_reserve_quota(
+                                task, cost, datetime.now(UTC)
+                            )
+                            if claim_status == "already_done":
+                                state["tasks"][key] = {
+                                    "state": "partial",
+                                    "db_ingested": True,
+                                    "note": "already_collected_in_main_db",
+                                    "received_at_utc": datetime.now(UTC).isoformat(),
+                                }
+                                atomic(state_path, state)
+                                continue
+                            wait = max(wait, db_wait)
+                        else:
+                            wait = max(wait, writer.check_shared_quota(cost, datetime.now(UTC)))
+                    except Exception:
+                        writer.close()
                 if wait > 0:
                     report("waiting_for_quota")
                     for _ in range(min(30, math.ceil(wait))):
@@ -141,7 +236,35 @@ def run(args):
                     tmp = destination.with_suffix(".tmp")
                     tmp.write_bytes(gzip.compress(json.dumps(envelope, ensure_ascii=False).encode(), mtime=0))
                     os.replace(tmp,destination)
-                    state["tasks"][key] = {"state": coverage["state"], "file": str(destination.relative_to(output)), "received_at_utc": received}
+                    rel_dest = str(destination.relative_to(output))
+                    task_entry = {"state": coverage["state"], "file": rel_dest, "received_at_utc": received}
+                    if writer is not None:
+                        try:
+                            from db_writer import parse_and_validate_envelope
+                            parsed = parse_and_validate_envelope(destination)
+                            res = writer.ingest_parsed_envelope(
+                                parsed,
+                                record_api_call=(reserved_call_id is None),
+                                call_cost=cost,
+                            )
+                            cp_path = output / "db_ingest_checkpoint.json"
+                            cp = json.loads(cp_path.read_text(encoding="utf-8")) if cp_path.exists() else {"ingested": {}, "failed": {}}
+                            cp.setdefault("ingested", {})[key] = {
+                                "file": rel_dest.replace("\\", "/"),
+                                "file_task_id": key,
+                                "canonical_task_id": res["canonical_task_id"],
+                                "request_id": res["request_id"],
+                                "sha256": parsed["sha256"],
+                                "state": coverage["state"],
+                                "imported_at_utc": datetime.now(UTC).isoformat(),
+                            }
+                            atomic(cp_path, cp)
+                            task_entry["db_ingested"] = True
+                        except Exception as db_exc:
+                            writer.close()
+                            task_entry["db_ingested"] = False
+                            task_entry["db_error"] = type(db_exc).__name__
+                    state["tasks"][key] = task_entry
                     successes += 1
                 except Exception as exc:
                     code = exc.code if isinstance(exc,HTTPError) else None
@@ -155,6 +278,9 @@ def run(args):
                     if STOP: break
                     time.sleep(1)
             else:
+                if writer is not None:
+                    _flush_pending_to_db(output, state, writer, max_flush=50)
+                    atomic(state_path, state)
                 if all(state["tasks"].get(task_id(t),{}).get("state") in ("complete","partial","unavailable") for t in items):
                     report("first_pass_finished"); return
             if not attempted:
@@ -164,6 +290,8 @@ def run(args):
                     time.sleep(1)
         report("stopped")
     finally:
+        if writer is not None:
+            writer.close()
         lock.close()
 
 def main():
@@ -172,6 +300,8 @@ def main():
     p.add_argument("--start",type=date.fromisoformat,default=date(2022,1,1))
     p.add_argument("--end",type=date.fromisoformat,default=date(2026,9,30))
     p.add_argument("--max-requests",type=int,default=0)
+    p.add_argument("--db", action="store_true", help="Enable main PostgreSQL dual-write")
+    p.add_argument("--db-config", type=Path, default=None, help="DB connection config JSON")
     args=p.parse_args()
     if args.start>args.end or args.max_requests<0: p.error("Invalid range")
     def stop(*_):

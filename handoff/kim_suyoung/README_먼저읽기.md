@@ -1,9 +1,24 @@
 # 김수영 — 예보 수집 전용 전달 패키지
 
-> **2026-11-25 후속 요청:** 메인 DB에 연결한 뒤 신규 수집 응답을 자동 저장하고 기존 수집분도 병합한다.
-> [DB 연결·최소 설치·코드 수정 및 기존 응답 이관 요청](DB_연결과_수집전환_요청.md)을 먼저 읽는다.
-> 기존 Python을 재사용하고 없는 경우에만 Tailscale과 psycopg를 설치한다. 아래는 DB 전환 전 파일 수집 동작의 설명이다.
-> 현재 collector.py에는 아직 DB writer가 없으며 이 문서의 코드 수정 요청에 따라 추가해야 한다.
+> **2026-11-25 후속 요청 (구현 완료):** 메인 DB에 연결한 뒤 신규 수집 응답을 자동 저장하고 기존 수집분도 병합한다.
+> [DB 연결·최소 설치·코드 수정 및 기존 응답 이관 요청](DB_연결과_수집전환_요청.md)에 따라 `db_writer.py`, `import_to_db.py`, `collector.py --db` 연동 및 기존 응답 4,814건(3,513,576 시간별 행) 이관이 완료되었다.
+
+## 메인 DB 연결 및 이관 실행 방법
+
+```powershell
+# 1) 연결 및 권한 확인
+py -3 check_db.py --tcp-only
+py -3 check_db.py
+
+# 2) 기존 수집 파일 검증 및 메인 DB 이관 (소량 배치 시험 및 전체 이관)
+py -3 import_to_db.py --validate-only --report validation_summary.json
+py -3 import_to_db.py --limit 5
+py -3 import_to_db.py --limit 5 --ignore-checkpoint
+py -3 import_to_db.py --workers 12 --report validation_summary.json
+
+# 3) 신규 응답 파일+메인 DB 동시 저장 자동수집 실행
+py -3 collector.py --output "C:\Users\Suyoung\Desktop\MeteoData" --db
+```
 
 이 폴더를 AI에게 전달하고 **AGENTS.md를 읽고 실행해줘**라고 요청하세요.
 DB, DataGrip, Docker, API 키, 모델 학습은 필요 없습니다. Python 3.10 이상과 인터넷만 필요합니다.
