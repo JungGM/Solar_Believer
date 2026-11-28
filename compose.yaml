@@ -80,6 +80,14 @@ services:
         condition: service_completed_successfully
     restart: unless-stopped
 
+  web-publish:
+    <<: *python
+    command: [python, -m, backend.app.publish_web]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
   web:
     build: ./frontend
     restart: unless-stopped
@@ -88,6 +96,8 @@ services:
     depends_on:
       api:
         condition: service_healthy
+      web-publish:
+        condition: service_completed_successfully
     healthcheck:
       test: [CMD, wget, -q, --spider, http://127.0.0.1/]
       interval: 10s

@@ -4,6 +4,7 @@ from sqlalchemy import create_engine
 from backend.app.config import get_settings
 from backend.app.db import Base
 from backend.app import models  # noqa: F401 -- register tables
+from backend.app import web_assets  # noqa: F401 -- register web storage
 
 
 def run():

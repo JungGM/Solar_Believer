@@ -98,3 +98,9 @@ def training(session: DB, limit: Limit = 100, offset: Offset = 0):
 @app.get("/api/v1/job-runs", response_model=list[JobRunRead])
 def jobs(session: DB, limit: Limit = 100, offset: Offset = 0):
     return session.scalars(select(JobRun).order_by(JobRun.id.desc()).offset(offset).limit(limit)).all()
+
+
+# Register the SPA catch-all after all API routes.
+from .web_assets import router as frontend_router  # noqa: E402
+
+app.include_router(frontend_router)

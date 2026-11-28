@@ -1,3 +1,10 @@
+FROM node:24-alpine AS frontend-build
+WORKDIR /web
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
+
 FROM python:3.12-slim AS runtime
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
@@ -10,6 +17,7 @@ COPY API /app/API
 COPY scripts /app/scripts
 COPY api.py /app/api.py
 COPY collector_credentials.py /app/collector_credentials.py
+COPY --from=frontend-build /web/dist /app/web-dist
 USER app
 CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
